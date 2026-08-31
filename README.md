@@ -70,12 +70,20 @@ Chrono is built around the interruptions rather than in spite of them:
 
 ```bash
 brew tap ai-slop-in-a-quiet-forge/tap
+brew trust ai-slop-in-a-quiet-forge/tap
 brew install --cask --no-quarantine chrono
 ```
 
 Upgrades are then `brew upgrade --cask chrono`.
 
-`--no-quarantine` deserves a sentence rather than blind copy-paste. Chrono is ad-hoc signed, not
+Both flags in there are security decisions, so neither should be pasted blindly.
+
+`brew trust` is required because Homebrew 6 refuses to load a cask from a third-party tap until
+you say so — a cask is Ruby that Homebrew executes, so trusting the tap means trusting whatever
+lands in it later, not just what is in it today. On Homebrew 5 the step is unnecessary and the
+command does not exist; skip it there.
+
+`--no-quarantine` Chrono is ad-hoc signed, not
 signed with an Apple Developer ID — that needs a paid account and someone willing to hold and
 renew it (see [docs/ROADMAP.md](docs/ROADMAP.md)). Without the flag, macOS quarantines the app and
 blocks the first launch until you approve it in System Settings. With it, Homebrew never attaches
