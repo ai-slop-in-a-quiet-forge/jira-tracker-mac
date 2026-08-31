@@ -11,6 +11,8 @@ struct OnboardingView: View {
     @Environment(AppEnvironment.self) private var environment
     @State private var step = 0
 
+    private var bind: SettingsBinding { SettingsBinding(environment: environment) }
+
     var body: some View {
         VStack(spacing: 0) {
             content
@@ -103,7 +105,7 @@ struct OnboardingView: View {
                     DailyTargetField()
                     Toggle(
                         "Start Chrono when I log in",
-                        isOn: binding(\.launchAtLogin)
+                        isOn: bind.bind(\.launchAtLogin)
                     )
                     .onChange(of: environment.engine.settings.launchAtLogin) { _, enabled in
                         LoginItem.setEnabled(enabled)
@@ -111,13 +113,13 @@ struct OnboardingView: View {
                 }
 
                 SettingsGroup("When you step away") {
-                    Toggle("Notice when I go idle", isOn: binding(\.autoPauseOnIdle))
-                    Toggle("Pause when the screen locks", isOn: binding(\.autoPauseOnScreenLock))
-                    Toggle("Pause when the Mac sleeps", isOn: binding(\.autoPauseOnSleep))
+                    Toggle("Notice when I go idle", isOn: bind.bind(\.autoPauseOnIdle))
+                    Toggle("Pause when the screen locks", isOn: bind.bind(\.autoPauseOnScreenLock))
+                    Toggle("Pause when the Mac sleeps", isOn: bind.bind(\.autoPauseOnSleep))
                 }
 
                 SettingsGroup("Meetings and calls") {
-                    Toggle("Warn me when I'm on a call while tracking", isOn: binding(\.meetingDetectionEnabled))
+                    Toggle("Warn me when I'm on a call while tracking", isOn: bind.bind(\.meetingDetectionEnabled))
                     Text("Chrono checks whether the microphone or camera is live. It never opens either itself, and never records anything.")
                         .font(.system(size: 10.5))
                         .foregroundStyle(.secondary)
@@ -126,13 +128,6 @@ struct OnboardingView: View {
             }
             .padding(Theme.Spacing.section)
         }
-    }
-
-    private func binding<Value>(_ keyPath: WritableKeyPath<TrackerSettings, Value>) -> Binding<Value> {
-        Binding(
-            get: { environment.engine.settings[keyPath: keyPath] },
-            set: { newValue in environment.mutateSettings { $0[keyPath: keyPath] = newValue } }
-        )
     }
 
     // MARK: - Footer

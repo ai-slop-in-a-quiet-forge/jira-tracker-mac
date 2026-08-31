@@ -46,6 +46,8 @@ struct PhoneSettingsTab: View {
                     if let payload = remote.pairingPayload() {
                         statusRow(label: "Address", value: "\(payload.host):\(payload.port)", healthy: true)
                     }
+                    WebRemotePortField()
+
                     Button("Show the pairing code…") {
                         WindowManager.shared.showPairing(environment: environment)
                     }
@@ -124,5 +126,44 @@ struct PhoneSettingsTab: View {
             Text(value)
                 .font(.system(size: 11, weight: .medium))
         }
+    }
+}
+
+/// Lets the user pin the port the remote listens on.
+///
+/// Worth exposing rather than hiding: the phone saves the remote to its Home Screen as a URL, so
+/// a changing port silently breaks that shortcut. A fixed port keeps it working across restarts;
+/// 0 means "let the OS choose", which is only sensible if the chosen port collides with something.
+struct WebRemotePortField: View {
+    @Environment(AppEnvironment.self) private var environment
+    @State private var text = ""
+
+    var body: some View {
+        HStack {
+            Text("Port").font(.system(size: 11.5))
+            Spacer()
+            TextField("47632", text: $text)
+                .textFieldStyle(.roundedBorder)
+                .font(.system(size: 11, design: .monospaced))
+                .frame(width: 80)
+                .onSubmit(apply)
+            Button("Apply") { apply() }
+                .buttonStyle(QuietButtonStyle(compact: true))
+                .disabled(Int(text) == nil)
+        }
+        .onAppear { text = String(environment.engine.settings.webRemotePort) }
+        .help("A fixed port keeps the shortcut saved on your phone working. 0 lets the system pick one.")
+    }
+
+    private func apply() {
+        guard let value = Int(text), value >= 0, value <= 65_535 else { return }
+        environment.mutateSettings { $0.webRemotePort = value }
+        // Restarting the listener is what actually moves the port.
+        environment.remote.stop()
+        environment.remote.applySettings(environment.engine.settings)
+        environment.show(.init(
+            kind: .info,
+            message: value == 0 ? "The system will assign a port." : "Remote moved to port \(value)."
+        ))
     }
 }

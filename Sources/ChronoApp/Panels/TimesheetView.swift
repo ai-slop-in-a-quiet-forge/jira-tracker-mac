@@ -11,11 +11,10 @@ struct TimesheetView: View {
     @Environment(AppEnvironment.self) private var environment
     @State private var selectedDay = Date()
 
-    private var engine: TrackingEngine { engineRef }
-    private var engineRef: TrackingEngine { environment.engine }
+    private var engine: TrackingEngine { environment.engine }
 
     private var rollup: DayRollup {
-        DayRollup.build(segments: engineRef.state.allSegments(), day: selectedDay, asOf: Date())
+        DayRollup.build(segments: engine.state.allSegments(), day: selectedDay, asOf: Date())
     }
 
     var body: some View {
@@ -50,12 +49,12 @@ struct TimesheetView: View {
 
     private var weekTotals: some View {
         let week = WeekRollup.build(
-            segments: engineRef.state.allSegments(),
+            segments: engine.state.allSegments(),
             weekContaining: selectedDay,
             asOf: Date()
         )
-        let target = engineRef.settings.dailyTargetHours
-            * Double(max(1, engineRef.settings.workdays.count))
+        let target = engine.settings.dailyTargetHours
+            * Double(max(1, engine.settings.workdays.count))
 
         return VStack(alignment: .leading, spacing: Theme.Spacing.small) {
             SectionHeader(title: "This week")
@@ -161,7 +160,7 @@ struct TimesheetView: View {
 
             Spacer()
 
-            ProgressRing(progress: rollup.progress(towardHours: engineRef.settings.dailyTargetHours))
+            ProgressRing(progress: rollup.progress(towardHours: engine.settings.dailyTargetHours))
                 .frame(width: 28, height: 28)
 
             BackfillButton(day: selectedDay)

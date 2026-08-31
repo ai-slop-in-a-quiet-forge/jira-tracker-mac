@@ -94,13 +94,23 @@ struct SettingsGroup<Content: View>: View {
 }
 
 /// Reads and writes a single settings field, persisting on every change.
+///
+/// `Binding`'s accessors are `@Sendable`, while the settings live on the main actor. SwiftUI only
+/// ever invokes them on the main thread, so `assumeIsolated` states that fact rather than
+/// papering over the warning — and keeps every settings control a one-liner.
+@MainActor
 struct SettingsBinding {
     let environment: AppEnvironment
 
-    func bind<Value>(_ keyPath: WritableKeyPath<TrackerSettings, Value>) -> Binding<Value> {
-        Binding(
-            get: { environment.engine.settings[keyPath: keyPath] },
-            set: { newValue in environment.mutateSettings { $0[keyPath: keyPath] = newValue } }
+    func bind<Value: Sendable>(_ keyPath: WritableKeyPath<TrackerSettings, Value>) -> Binding<Value> {
+        let environment = self.environment
+        return Binding(
+            get: { MainActor.assumeIsolated { environment.engine.settings[keyPath: keyPath] } },
+            set: { newValue in
+                MainActor.assumeIsolated {
+                    environment.mutateSettings { $0[keyPath: keyPath] = newValue }
+                }
+            }
         )
     }
 }
