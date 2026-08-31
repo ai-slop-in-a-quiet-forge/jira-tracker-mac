@@ -587,3 +587,75 @@ struct SigningContractTests {
         #expect(String(decoding: input, as: UTF8.self) == "42.1700000000.hello")
     }
 }
+
+@Suite("HTTP request parsing")
+struct HTTPRequestTests {
+
+    private func raw(_ text: String) -> Data { Data(text.utf8) }
+
+    @Test("Parses a simple GET")
+    func simpleGet() throws {
+        let request = try #require(HTTPRequest(raw: raw(
+            "GET /state HTTP/1.1\r\nHost: 192.168.1.20:8765\r\nX-Chrono-Counter: 7\r\n\r\n"
+        )))
+        #expect(request.method == "GET")
+        #expect(request.path == "/state")
+        #expect(request.headers["x-chrono-counter"] == "7")
+        #expect(request.body.isEmpty)
+    }
+
+    @Test("Header names are matched case-insensitively, since clients vary")
+    func headerCaseInsensitivity() throws {
+        let request = try #require(HTTPRequest(raw: raw(
+            "GET / HTTP/1.1\r\nX-CHRONO-MAC: abc\r\nx-chrono-device: phone-1\r\n\r\n"
+        )))
+        #expect(request.headers["x-chrono-mac"] == "abc")
+        #expect(request.headers["x-chrono-device"] == "phone-1")
+    }
+
+    @Test("A query string is stripped from the path")
+    func queryStringStripped() throws {
+        let request = try #require(HTTPRequest(raw: raw("GET /state?cache=0 HTTP/1.1\r\n\r\n")))
+        #expect(request.path == "/state")
+    }
+
+    @Test("Returns nil until the headers are complete, so the caller keeps reading")
+    func incompleteHeaders() {
+        #expect(HTTPRequest(raw: raw("POST /command HTTP/1.1\r\nContent-Length: 5\r\n")) == nil)
+        #expect(HTTPRequest(raw: raw("POST /comm")) == nil)
+    }
+
+    @Test("Returns nil until the whole body has arrived")
+    func incompleteBody() throws {
+        let head = "POST /command HTTP/1.1\r\nContent-Length: 13\r\n\r\n"
+        #expect(HTTPRequest(raw: raw(head + "{\"c\":\"pau")) == nil, "body is short, keep reading")
+
+        let complete = try #require(HTTPRequest(raw: raw(head + #"{"c":"pause"}"#)))
+        #expect(String(decoding: complete.body, as: UTF8.self) == #"{"c":"pause"}"#)
+    }
+
+    @Test("Extra bytes past Content-Length are not swallowed into the body")
+    func bodyRespectsContentLength() throws {
+        let request = try #require(HTTPRequest(raw: raw(
+            "POST /command HTTP/1.1\r\nContent-Length: 4\r\n\r\nabcdEXTRA"
+        )))
+        #expect(String(decoding: request.body, as: UTF8.self) == "abcd")
+    }
+
+    @Test("A body with no Content-Length is treated as empty rather than guessed at")
+    func missingContentLength() throws {
+        let request = try #require(HTTPRequest(raw: raw("POST /command HTTP/1.1\r\n\r\nignored")))
+        #expect(request.body.isEmpty)
+    }
+
+    @Test("Malformed request lines are rejected")
+    func malformedRequestLine() {
+        #expect(HTTPRequest(raw: raw("NONSENSE\r\n\r\n")) == nil)
+    }
+
+    @Test("The method is normalised to upper case")
+    func methodNormalised() throws {
+        let request = try #require(HTTPRequest(raw: raw("get / HTTP/1.1\r\n\r\n")))
+        #expect(request.method == "GET")
+    }
+}
