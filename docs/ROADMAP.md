@@ -85,9 +85,12 @@ is much smaller.
 ### Not signed or notarised — **M**
 Releases are ad-hoc signed, so a downloaded build is quarantined and the first launch has to be
 approved through System Settings ▸ Privacy & Security. On macOS 15 the right-click ▸ Open
-shortcut no longer works, so that is the only route. Ad-hoc signing also means the code identity
-changes every release, which re-triggers the Bluetooth and Local Network prompts and one Keychain
-prompt on each update. Proper signing needs a Developer ID, which needs someone willing to hold
+shortcut no longer works, so that is the only route. Installing with Homebrew does not avoid it:
+`--no-quarantine` was removed in Homebrew 6, so a cask install is quarantined exactly like a
+download. Ad-hoc signing also means the code identity changes every release — the designated
+requirement is a bare cdhash, so two builds of identical source do not share one. Consequently
+Homebrew cannot carry a Gatekeeper approval across an upgrade, and the Bluetooth, Local Network
+and Keychain prompts all return on each update. Proper signing needs a Developer ID, which needs someone willing to hold
 and renew it. Until then, building from source avoids all of it.
 
 *Labels: `packaging`, `help wanted`*
