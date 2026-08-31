@@ -72,13 +72,15 @@ remove the main reason to leave the app.
 
 *Labels: `enhancement`, `area: ui`, `good first issue`*
 
-### No update mechanism — **M**
-Tagged releases publish a zip, but nothing tells a running copy that a newer one exists — you
-check by hand. A Homebrew cask would cover most people; Sparkle would be nicer but means hosting
-an appcast, which brushes against the no-server principle. A cask is probably the right answer,
-and now has a stable artifact URL to point at.
+### Chrono cannot tell you an update exists — **S**
+Mostly solved: `brew upgrade --cask chrono` updates a Homebrew install, and the tap re-points
+itself at each new release within a day. What is still missing is the app noticing on its own —
+anyone who took the direct download has no signal that a newer build shipped, short of visiting
+the releases page. Sparkle would do it properly but means hosting an appcast, which brushes
+against the no-server principle; a periodic check against the public releases API would not, and
+is much smaller.
 
-*Labels: `packaging`, `help wanted`*
+*Labels: `packaging`, `enhancement`, `good first issue`*
 
 ### Not signed or notarised — **M**
 Releases are ad-hoc signed, so a downloaded build is quarantined and the first launch has to be

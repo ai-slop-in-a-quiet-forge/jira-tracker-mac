@@ -64,28 +64,50 @@ Chrono is built around the interruptions rather than in spite of them:
 - A Jira Cloud API token ([create one here](https://id.atlassian.com/manage-profile/security/api-tokens))
 - To build from source: Xcode 15+ or the Swift 5.9+ toolchain
 
-## Download
+## Install
+
+### Homebrew
+
+```bash
+brew tap ai-slop-in-a-quiet-forge/tap
+brew install --cask --no-quarantine chrono
+```
+
+Upgrades are then `brew upgrade --cask chrono`.
+
+`--no-quarantine` deserves a sentence rather than blind copy-paste. Chrono is ad-hoc signed, not
+signed with an Apple Developer ID — that needs a paid account and someone willing to hold and
+renew it (see [docs/ROADMAP.md](docs/ROADMAP.md)). Without the flag, macOS quarantines the app and
+blocks the first launch until you approve it in System Settings. With it, Homebrew never attaches
+the quarantine flag and the app just opens. You are choosing to trust the binary instead of having
+Apple vouch for it; every release is built in public by
+[the release workflow](.github/workflows/release.yml) from a tagged commit, so you can read
+exactly what went into it.
+
+### Direct download
 
 [**Latest release**](https://github.com/ai-slop-in-a-quiet-forge/jira-tracker-mac/releases/latest)
 — a universal build, ~3 MB zipped. Unzip and drag `Chrono.app` to Applications.
 
-**macOS will refuse to open it the first time.** Chrono is not signed with an Apple Developer ID,
-because that needs a paid account and someone willing to hold it (see
-[docs/ROADMAP.md](docs/ROADMAP.md)). So Gatekeeper blocks the first launch:
+Downloaded this way it *is* quarantined, so the first launch is blocked:
 
 1. Double-click Chrono. macOS says it cannot verify the developer — dismiss the dialog.
 2. Open **System Settings ▸ Privacy & Security**, scroll down, click **Open Anyway**.
 3. Confirm. macOS remembers the choice.
 
 On macOS 15 and later the old right-click ▸ Open shortcut no longer works for this; Privacy &
-Security is the only route. Two consequences worth knowing before you decide: the build is
-ad-hoc signed, so its identity changes with every release — macOS re-asks for Bluetooth and Local
-Network permission after an update, and the Keychain re-prompts once for your Jira token.
+Security is the only route.
 
-If none of that appeals, build from source instead. The result is identical and skips all of it,
-because a locally built app is never quarantined.
+### Either way
 
-## Install from source
+Ad-hoc signing derives the app's identity from the build rather than from a stable certificate, so
+it changes with every release. macOS re-asks for Bluetooth and Local Network permission after an
+update, and the Keychain prompts once for your Jira token. That is expected.
+
+If none of it appeals, build from source. The result is identical and skips all of it, because a
+locally built app is never quarantined.
+
+### From source
 
 ```bash
 git clone git@github.com:ai-slop-in-a-quiet-forge/jira-tracker-mac.git
