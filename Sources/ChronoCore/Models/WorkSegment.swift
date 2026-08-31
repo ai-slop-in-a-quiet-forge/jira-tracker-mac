@@ -80,12 +80,18 @@ public struct WorkSegment: Codable, Hashable, Sendable, Identifiable {
     /// Splits at a boundary, returning the pieces. Used to keep segments inside one calendar
     /// day so daily totals and Jira worklog `started` dates stay honest when you work past
     /// midnight.
+    ///
+    /// **Every piece keeps the parent's `id`.** That is deliberate, and load-bearing: draft
+    /// coverage is tracked by segment id, so a session running 23:40 -> 00:20 produces two
+    /// worklogs (one per day) that both claim the same underlying segment. Minting a fresh id
+    /// for the tail would make splitting non-deterministic and would let the second day's time
+    /// be drafted twice. Pieces are never written back into stored history, so the duplicate
+    /// ids stay transient — and per-day filtering means no UI list ever sees two at once.
     public func split(at boundary: Date) -> [WorkSegment] {
         guard let end, boundary > start, boundary < end else { return [self] }
         var head = self
         head.end = boundary
         var tail = self
-        tail.id = UUID()
         tail.start = boundary
         tail.end = end
         // Trimmed-idle bookkeeping belongs to whichever piece actually lost the time; it was
