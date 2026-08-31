@@ -134,10 +134,21 @@ exists in `AppSensor`.
 
 *Labels: `enhancement`, `area: sensors`*
 
-### iOS Live Activity and Lock Screen widget — **M**
-The iOS remote works, but seeing the running timer on the Lock Screen without opening the app
-would make it genuinely ambient. Needs a widget extension in the generated Xcode project, so
-`Scripts/generate-ios-project.py` grows a second target.
+### The Lock Screen timer goes stale while the app is suspended — **M**
+The Live Activity ships: `ChronoRemoteWidget` is a second target in the generated project, and
+the Lock Screen counts up on its own from a date anchor rather than costing an ActivityKit update
+per second.
+
+What is left is the case where iOS suspends the app. Without the `bluetooth-central` background
+mode the app cannot hear a pause made on the Mac, so the Lock Screen keeps counting until the app
+is next opened. The activity is marked stale when the phone *knows* it has lost the Mac, but a
+suspended app does not know.
+
+Declaring the background mode needs an `Info.plist` for the app target — `INFOPLIST_KEY_` covers
+a fixed list of top-level keys and `UIBackgroundModes` is not among them (`NSSupportsLiveActivities`
+is, which is why the Live Activity itself needed no plist). Worth doing deliberately: it is a real
+trade against battery, and honest state restoration wants `CBCentralManagerOptionRestoreIdentifierKey`
+too.
 
 *Labels: `enhancement`, `platform: ios`*
 

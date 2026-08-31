@@ -13,11 +13,43 @@
 		77DF1438005E62BDAEDD04FC /* PairingStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCD80715F1A7236380952A54 /* PairingStore.swift */; };
 		AD5729B24D7D6EBDDE556FC2 /* BLEClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82AFB03AA91756C05CDCEDD7 /* BLEClient.swift */; };
 		A2829D88EA99FF4E7FCBE9DB /* QRScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDD79B6E2B558155B9FB70EC /* QRScannerView.swift */; };
+		70E658A387C7D39A19202BEF /* ChronoActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C1E39F9CF060B2F87F9E2A7 /* ChronoActivityAttributes.swift */; };
+		B96151517840B39F162F874E /* LiveActivityController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09952ED5428642EBEAC20F04 /* LiveActivityController.swift */; };
 		352A1F4A278FBD073441E48B /* Clock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A660BA08DAB8784684FAD0C /* Clock.swift */; };
 		8495684B8D7F46266E7AD4AC /* RemoteProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC299ED62F7228C1EDCC2225 /* RemoteProtocol.swift */; };
 		BE44CBFBEF95518437EB9E29 /* RemoteAuth.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADC9C94C8DDC39F9C28E092E /* RemoteAuth.swift */; };
 		0412910FF51AB21CDBECD033 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 53BFACF22BD98CA54003260B /* Assets.xcassets */; };
+		FE6B887FB974994A581E6A34 /* ChronoWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12F93FAFE945342DC9F25144 /* ChronoWidgetBundle.swift */; };
+		FBFDCC7656F1E6A5A11F47AE /* ChronoLockScreenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6465314F705E84A253D5582F /* ChronoLockScreenView.swift */; };
+		BFF2CECE6D0B44325EB4D492 /* ChronoDynamicIslandView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91C8053E6741CDA94E1027EE /* ChronoDynamicIslandView.swift */; };
+		51236A17FF8E7DDC0D7BA2A6 /* ChronoActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C1E39F9CF060B2F87F9E2A7 /* ChronoActivityAttributes.swift */; };
+		9802488512ACB3EC05E7F825 /* RemoteProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC299ED62F7228C1EDCC2225 /* RemoteProtocol.swift */; };
+		991189E3B95F9DE789178690 /* ChronoRemoteWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 1937D5E1608F63F138577ACB /* ChronoRemoteWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		D19B59A8CD38055009CE2EB1 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 46F86FAA6BBF9AC94A7E4595 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 1CF4CC4BC7C590A45062F69B;
+			remoteInfo = ChronoRemoteWidget;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		0FCE7460671A9118E8ECE9D0 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				991189E3B95F9DE789178690 /* ChronoRemoteWidget.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		F5BF48AA40CAD7891EB709FC /* ChronoRemote.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "ChronoRemote.app"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -27,14 +59,28 @@
 		FCD80715F1A7236380952A54 /* PairingStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairingStore.swift; sourceTree = "<group>"; };
 		82AFB03AA91756C05CDCEDD7 /* BLEClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLEClient.swift; sourceTree = "<group>"; };
 		DDD79B6E2B558155B9FB70EC /* QRScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRScannerView.swift; sourceTree = "<group>"; };
+		8C1E39F9CF060B2F87F9E2A7 /* ChronoActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChronoActivityAttributes.swift; sourceTree = "<group>"; };
+		09952ED5428642EBEAC20F04 /* LiveActivityController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityController.swift; sourceTree = "<group>"; };
 		5A660BA08DAB8784684FAD0C /* Clock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = Clock.swift; path = "../../Sources/ChronoCore/Util/Clock.swift"; sourceTree = SOURCE_ROOT; };
 		FC299ED62F7228C1EDCC2225 /* RemoteProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RemoteProtocol.swift; path = "../../Sources/ChronoCore/Remote/RemoteProtocol.swift"; sourceTree = SOURCE_ROOT; };
 		ADC9C94C8DDC39F9C28E092E /* RemoteAuth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RemoteAuth.swift; path = "../../Sources/ChronoCore/Remote/RemoteAuth.swift"; sourceTree = SOURCE_ROOT; };
 		53BFACF22BD98CA54003260B /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		1937D5E1608F63F138577ACB /* ChronoRemoteWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "ChronoRemoteWidget.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
+		12F93FAFE945342DC9F25144 /* ChronoWidgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChronoWidgetBundle.swift; sourceTree = "<group>"; };
+		6465314F705E84A253D5582F /* ChronoLockScreenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChronoLockScreenView.swift; sourceTree = "<group>"; };
+		91C8053E6741CDA94E1027EE /* ChronoDynamicIslandView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChronoDynamicIslandView.swift; sourceTree = "<group>"; };
+		9CFC43A002D633C45379024E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		349B578E88FC623128D2018B /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		9E8FBD6C64C3041410F48356 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -48,6 +94,7 @@
 			isa = PBXGroup;
 			children = (
 				3F0DEFF5F9073BC38CB3D2AA /* ChronoRemote */,
+				421611EA4504623A75FBD01B /* ChronoRemoteWidget */,
 				433D647A17039DC680DEAE8F /* Products */,
 			);
 			sourceTree = "<group>";
@@ -61,6 +108,8 @@
 				FCD80715F1A7236380952A54 /* PairingStore.swift */,
 				82AFB03AA91756C05CDCEDD7 /* BLEClient.swift */,
 				DDD79B6E2B558155B9FB70EC /* QRScannerView.swift */,
+				8C1E39F9CF060B2F87F9E2A7 /* ChronoActivityAttributes.swift */,
+				09952ED5428642EBEAC20F04 /* LiveActivityController.swift */,
 				17C3C640D651C2A3E5512232 /* Shared with the Mac app */,
 				53BFACF22BD98CA54003260B /* Assets.xcassets */,
 			);
@@ -77,10 +126,22 @@
 			name = "Shared with the Mac app";
 			sourceTree = "<group>";
 		};
+		421611EA4504623A75FBD01B /* ChronoRemoteWidget */ = {
+			isa = PBXGroup;
+			children = (
+				12F93FAFE945342DC9F25144 /* ChronoWidgetBundle.swift */,
+				6465314F705E84A253D5582F /* ChronoLockScreenView.swift */,
+				91C8053E6741CDA94E1027EE /* ChronoDynamicIslandView.swift */,
+				9CFC43A002D633C45379024E /* Info.plist */,
+			);
+			path = ChronoRemoteWidget;
+			sourceTree = "<group>";
+		};
 		433D647A17039DC680DEAE8F /* Products */ = {
 			isa = PBXGroup;
 			children = (
 				F5BF48AA40CAD7891EB709FC /* ChronoRemote.app */,
+				1937D5E1608F63F138577ACB /* ChronoRemoteWidget.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -95,15 +156,33 @@
 				F3F3D267CF0FD5307403D537 /* Sources */,
 				349B578E88FC623128D2018B /* Frameworks */,
 				41B260B1D2A5E0B273280C8E /* Resources */,
+				0FCE7460671A9118E8ECE9D0 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				66FE3DF865C05329D84EC26E /* PBXTargetDependency */,
 			);
 			name = ChronoRemote;
 			productName = ChronoRemote;
 			productReference = F5BF48AA40CAD7891EB709FC /* ChronoRemote.app */;
 			productType = "com.apple.product-type.application";
+		};
+		1CF4CC4BC7C590A45062F69B /* ChronoRemoteWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D3B20F8DF7BEA98D88D6E461 /* Build configuration list */;
+			buildPhases = (
+				4759E476E339FA0AA2AFB839 /* Sources */,
+				9E8FBD6C64C3041410F48356 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ChronoRemoteWidget;
+			productName = ChronoRemoteWidget;
+			productReference = 1937D5E1608F63F138577ACB /* ChronoRemoteWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -116,6 +195,9 @@
 				LastUpgradeCheck = 1600;
 				TargetAttributes = {
 					42AEFBAE01D2DFD981F7DA7D = {
+						CreatedOnToolsVersion = 16.0;
+					};
+					1CF4CC4BC7C590A45062F69B = {
 						CreatedOnToolsVersion = 16.0;
 					};
 				};
@@ -134,6 +216,7 @@
 			projectRoot = "";
 			targets = (
 				42AEFBAE01D2DFD981F7DA7D /* ChronoRemote */,
+				1CF4CC4BC7C590A45062F69B /* ChronoRemoteWidget */,
 			);
 		};
 /* End PBXProject section */
@@ -160,13 +243,35 @@
 				77DF1438005E62BDAEDD04FC /* PairingStore.swift in Sources */,
 				AD5729B24D7D6EBDDE556FC2 /* BLEClient.swift in Sources */,
 				A2829D88EA99FF4E7FCBE9DB /* QRScannerView.swift in Sources */,
+				70E658A387C7D39A19202BEF /* ChronoActivityAttributes.swift in Sources */,
+				B96151517840B39F162F874E /* LiveActivityController.swift in Sources */,
 				352A1F4A278FBD073441E48B /* Clock.swift in Sources */,
 				8495684B8D7F46266E7AD4AC /* RemoteProtocol.swift in Sources */,
 				BE44CBFBEF95518437EB9E29 /* RemoteAuth.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		4759E476E339FA0AA2AFB839 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				FE6B887FB974994A581E6A34 /* ChronoWidgetBundle.swift in Sources */,
+				FBFDCC7656F1E6A5A11F47AE /* ChronoLockScreenView.swift in Sources */,
+				BFF2CECE6D0B44325EB4D492 /* ChronoDynamicIslandView.swift in Sources */,
+				51236A17FF8E7DDC0D7BA2A6 /* ChronoActivityAttributes.swift in Sources */,
+				9802488512ACB3EC05E7F825 /* RemoteProtocol.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		66FE3DF865C05329D84EC26E /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 1CF4CC4BC7C590A45062F69B /* ChronoRemoteWidget */;
+			targetProxy = D19B59A8CD38055009CE2EB1 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		A1FEF218C4C57CE118AD5A8A /* Debug */ = {
@@ -220,6 +325,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Chrono Remote talks to Chrono on your Mac over Bluetooth so you can pause or stop your timer from anywhere nearby.";
 				INFOPLIST_KEY_NSCameraUsageDescription = "The camera is used once, to scan the pairing code shown by Chrono on your Mac.";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -249,6 +355,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Chrono Remote talks to Chrono on your Mac over Bluetooth so you can pause or stop your timer from anywhere nearby.";
 				INFOPLIST_KEY_NSCameraUsageDescription = "The camera is used once, to scan the pairing code shown by Chrono on your Mac.";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -258,6 +365,51 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = in.chrono.remote;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+			};
+			name = Release;
+		};
+		2430F68469C622D94267FAB7 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ChronoRemoteWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Chrono;
+				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@executable_path/../../Frameworks");
+				MARKETING_VERSION = 1.0;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = in.chrono.remote.widget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		AFA69CCF024154413069847E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ChronoRemoteWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Chrono;
+				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@executable_path/../../Frameworks");
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = in.chrono.remote.widget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 			};
@@ -280,6 +432,15 @@
 			buildConfigurations = (
 				FEE7AE1A1C8291DDE6965C1D /* Debug */,
 				71B50D198E64EEE00C2C0E9C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D3B20F8DF7BEA98D88D6E461 /* Build configuration list */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				2430F68469C622D94267FAB7 /* Debug */,
+				AFA69CCF024154413069847E /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

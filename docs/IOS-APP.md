@@ -65,6 +65,29 @@ use. After that the app finds the Mac over Bluetooth on its own; no network invo
 
 Buttons apply optimistically so they feel instant; the Mac's next notification is authoritative.
 
+### On the Lock Screen
+
+While a timer is running the app puts a Live Activity on the Lock Screen and in the Dynamic
+Island: the task, the elapsed time, today's progress against your target, and the same call
+warning the app shows. Nothing to open.
+
+The timer there ticks on the phone, not over Bluetooth. Each snapshot from the Mac is converted
+into a start *instant* — `now - elapsed` — and the Lock Screen counts up from it on its own. That
+is not an optimisation: ActivityKit rate-limits updates and starts dropping them from an app that
+asks too often, so a per-second update would end up frozen at a stale time while still looking
+authoritative. Updates are spent only on things a clock cannot derive — pausing, resuming,
+changing task, a call starting.
+
+When the phone loses the Mac the activity dims and reads *Out of range* rather than vanishing: a
+timer that is probably still running is more useful than a blank card, as long as it does not
+claim more certainty than it has.
+
+**One thing it cannot do yet.** The app is not registered for Bluetooth background execution, so
+while iOS has it suspended it cannot hear that you paused on the Mac. The Lock Screen keeps
+counting until you next open the app, at which point it corrects itself. Fixing that means adding
+the `bluetooth-central` background mode, which is a real trade against battery and is tracked in
+[ROADMAP.md](ROADMAP.md) rather than assumed.
+
 ## Security
 
 Both transports use the same scheme.

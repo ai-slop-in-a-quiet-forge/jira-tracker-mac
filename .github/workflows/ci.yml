@@ -87,6 +87,21 @@ jobs:
             Sources/ChronoCore/Remote/RemoteProtocol.swift \
             Sources/ChronoCore/Remote/RemoteAuth.swift
 
+      # The widget extension is compiled separately because it has its own `@main`; putting both
+      # entry points in one invocation is ambiguous. It shares ChronoActivityAttributes.swift and
+      # RemoteProtocol.swift with the app rather than duplicating them, so this also proves those
+      # files still compile outside the app target.
+      - name: Type-check the widget extension
+        run: |
+          SDK=$(xcrun --sdk iphoneos --show-sdk-path)
+          swiftc -typecheck \
+            -sdk "$SDK" \
+            -target arm64-apple-ios17.0 \
+            -swift-version 5 \
+            ios/ChronoRemote/ChronoRemoteWidget/*.swift \
+            ios/ChronoRemote/ChronoRemote/ChronoActivityAttributes.swift \
+            Sources/ChronoCore/Remote/RemoteProtocol.swift
+
       # Built for the simulator rather than a device: runners have simulator runtimes, and this
       # additionally exercises the asset catalog, which a device build on a machine without a
       # simulator runtime cannot (actool needs one even for a device build).
@@ -97,8 +112,24 @@ jobs:
             -sdk iphonesimulator \
             -destination 'generic/platform=iOS Simulator' \
             -configuration Debug \
+            -derivedDataPath build/ios \
             CODE_SIGNING_ALLOWED=NO \
             build
+
+      # The extension has to be *embedded*, not merely built. A widget target that compiles but
+      # never gets copied into the app produces no Live Activity and no error either, which is
+      # exactly the kind of failure nobody notices until someone locks their phone.
+      - name: Widget extension is embedded in the app
+        run: |
+          APP=$(find build/ios/Build/Products -maxdepth 3 -name 'ChronoRemote.app' | head -1)
+          test -n "$APP" || { echo "::error::no built app found"; exit 1; }
+          APPEX="$APP/PlugIns/ChronoRemoteWidget.appex"
+          test -d "$APPEX" || { echo "::error::widget extension was not embedded"; ls -R "$APP" | head -40; exit 1; }
+          # And that it declares itself a WidgetKit extension, or it loads as nothing.
+          POINT=$(plutil -extract NSExtension.NSExtensionPointIdentifier raw "$APPEX/Info.plist")
+          echo "extension point: $POINT"
+          test "$POINT" = "com.apple.widgetkit-extension"
+          echo "embedded: $(du -sh "$APPEX" | cut -f1)"
 
   docs:
     name: Docs and hygiene

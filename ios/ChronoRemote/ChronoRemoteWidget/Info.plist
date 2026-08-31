@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!--
+      The one thing that cannot come from a build setting.
+
+      The app target generates its whole Info.plist from INFOPLIST_KEY_* settings, which is why
+      there is no plist beside it. That mechanism only covers a fixed list of top-level keys, and
+      NSExtensionPointIdentifier is neither on it nor top-level — it lives inside NSExtension. So
+      the widget target carries this file, merged with the generated one at build time.
+    -->
+    <key>NSExtension</key>
+    <dict>
+        <key>NSExtensionPointIdentifier</key>
+        <string>com.apple.widgetkit-extension</string>
+    </dict>
+</dict>
+</plist>

@@ -32,6 +32,8 @@ APP_SOURCES = [
     "PairingStore.swift",
     "BLEClient.swift",
     "QRScannerView.swift",
+    "ChronoActivityAttributes.swift",
+    "LiveActivityController.swift",
 ]
 
 # Sources shared verbatim with the Mac app.
@@ -46,6 +48,30 @@ SHARED_SOURCES = [
 ]
 
 RESOURCES = ["Assets.xcassets"]
+
+# --- The Live Activity widget extension ----------------------------------------------
+WIDGET_NAME = "ChronoRemoteWidget"
+WIDGET_BUNDLE_ID = f"{BUNDLE_ID}.widget"
+
+WIDGET_SOURCES = [
+    "ChronoWidgetBundle.swift",
+    "ChronoLockScreenView.swift",
+    "ChronoDynamicIslandView.swift",
+]
+
+# Files that belong to the app but are also compiled into the extension. They keep their
+# existing file references and only gain a second build-file entry, so there is one copy on
+# disk: the widget cannot disagree with the app about what a ContentState contains, in the same
+# way the iOS app cannot disagree with the Mac about the wire protocol.
+WIDGET_REUSED_SOURCES = [
+    "ChronoActivityAttributes.swift",
+    "../../Sources/ChronoCore/Remote/RemoteProtocol.swift",
+]
+
+# Cannot be generated from build settings: INFOPLIST_KEY_* covers a fixed list of top-level
+# keys, and NSExtensionPointIdentifier is nested inside NSExtension. Verified against Xcode's
+# CoreBuildSystem.xcspec, which lists NSSupportsLiveActivities but not this.
+WIDGET_INFO_PLIST = f"{WIDGET_NAME}/Info.plist"
 
 
 def oid(*parts: str) -> str:
@@ -71,13 +97,31 @@ def main() -> None:
     project_config_list = oid("configlist", "project")
     target_config_list = oid("configlist", "target")
 
+    widget_target_id = oid("target", "widget")
+    widget_product_id = oid("product", "widget")
+    widget_group = oid("group", "widget")
+    widget_sources_phase = oid("phase", "widget", "sources")
+    widget_frameworks_phase = oid("phase", "widget", "frameworks")
+    widget_config_list = oid("configlist", "widget")
+    embed_phase = oid("phase", "embed")
+    embed_build_file = oid("buildfile", "embed", WIDGET_NAME)
+    widget_dependency = oid("dependency", "widget")
+    widget_proxy = oid("proxy", "widget")
+
     all_sources = APP_SOURCES + SHARED_SOURCES
+    widget_all_sources = WIDGET_SOURCES + WIDGET_REUSED_SOURCES
 
     def file_ref(path: str) -> str:
         return oid("fileref", path)
 
     def build_file(path: str) -> str:
         return oid("buildfile", path)
+
+    # A PBXBuildFile is per-target, so a file compiled into both targets needs two of them
+    # pointing at the same PBXFileReference. Keeping the app's ids untouched keeps the
+    # regenerated project a readable diff.
+    def widget_build_file(path: str) -> str:
+        return oid("buildfile", "widget", path)
 
     lines: list[str] = []
     add = lines.append
@@ -104,7 +148,51 @@ def main() -> None:
             f"\t\t{build_file(path)} /* {path} in Resources */ = {{isa = PBXBuildFile; "
             f"fileRef = {file_ref(path)} /* {path} */; }};"
         )
+    for path in widget_all_sources:
+        name = os.path.basename(path)
+        add(
+            f"\t\t{widget_build_file(path)} /* {name} in Sources */ = {{isa = PBXBuildFile; "
+            f"fileRef = {file_ref(path)} /* {name} */; }};"
+        )
+    # RemoveHeadersOnCopy is what Xcode's own extension template emits; without it the copy
+    # carries headers into the bundle and the app fails validation on submission.
+    add(
+        f"\t\t{embed_build_file} /* {WIDGET_NAME}.appex in Embed Foundation Extensions */ = "
+        f"{{isa = PBXBuildFile; fileRef = {widget_product_id} /* {WIDGET_NAME}.appex */; "
+        f"settings = {{ATTRIBUTES = (RemoveHeadersOnCopy, ); }}; }};"
+    )
     add("/* End PBXBuildFile section */")
+
+    # --- PBXContainerItemProxy ---------------------------------------------------------
+    add("")
+    add("/* Begin PBXContainerItemProxy section */")
+    add(f"\t\t{widget_proxy} /* PBXContainerItemProxy */ = {{")
+    add("\t\t\tisa = PBXContainerItemProxy;")
+    add(f"\t\t\tcontainerPortal = {project_id} /* Project object */;")
+    add("\t\t\tproxyType = 1;")
+    add(f"\t\t\tremoteGlobalIDString = {widget_target_id};")
+    add(f"\t\t\tremoteInfo = {WIDGET_NAME};")
+    add("\t\t};")
+    add("/* End PBXContainerItemProxy section */")
+
+    # --- PBXCopyFilesBuildPhase --------------------------------------------------------
+    # Embedding the extension in the app is what makes it ship at all; a widget target that
+    # builds but is never copied into the .app produces no Live Activity and no error either.
+    add("")
+    add("/* Begin PBXCopyFilesBuildPhase section */")
+    add(f"\t\t{embed_phase} /* Embed Foundation Extensions */ = {{")
+    add("\t\t\tisa = PBXCopyFilesBuildPhase;")
+    add("\t\t\tbuildActionMask = 2147483647;")
+    add("\t\t\tdstPath = \"\";")
+    # 13 is the PlugIns directory inside the app wrapper.
+    add("\t\t\tdstSubfolderSpec = 13;")
+    add("\t\t\tfiles = (")
+    add(f"\t\t\t\t{embed_build_file} /* {WIDGET_NAME}.appex in Embed Foundation Extensions */,")
+    add("\t\t\t);")
+    add("\t\t\tname = \"Embed Foundation Extensions\";")
+    add("\t\t\trunOnlyForDeploymentPostprocessing = 0;")
+    add("\t\t};")
+    add("/* End PBXCopyFilesBuildPhase section */")
 
     # --- PBXFileReference --------------------------------------------------------------
     add("")
@@ -133,12 +221,33 @@ def main() -> None:
             f"\t\t{file_ref(path)} /* {path} */ = {{isa = PBXFileReference; "
             f"lastKnownFileType = folder.assetcatalog; path = {path}; sourceTree = \"<group>\"; }};"
         )
+    add(
+        f"\t\t{widget_product_id} /* {WIDGET_NAME}.appex */ = {{isa = PBXFileReference; "
+        f"explicitFileType = \"wrapper.app-extension\"; includeInIndex = 0; "
+        f'path = "{WIDGET_NAME}.appex"; sourceTree = BUILT_PRODUCTS_DIR; }};'
+    )
+    for path in WIDGET_SOURCES:
+        add(
+            f"\t\t{file_ref(path)} /* {path} */ = {{isa = PBXFileReference; "
+            f"lastKnownFileType = sourcecode.swift; path = {path}; sourceTree = \"<group>\"; }};"
+        )
+    add(
+        f"\t\t{file_ref(WIDGET_INFO_PLIST)} /* Info.plist */ = {{isa = PBXFileReference; "
+        f"lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = \"<group>\"; }};"
+    )
     add("/* End PBXFileReference section */")
 
     # --- PBXFrameworksBuildPhase -------------------------------------------------------
     add("")
     add("/* Begin PBXFrameworksBuildPhase section */")
     add(f"\t\t{frameworks_phase} /* Frameworks */ = {{")
+    add("\t\t\tisa = PBXFrameworksBuildPhase;")
+    add("\t\t\tbuildActionMask = 2147483647;")
+    add("\t\t\tfiles = (")
+    add("\t\t\t);")
+    add("\t\t\trunOnlyForDeploymentPostprocessing = 0;")
+    add("\t\t};")
+    add(f"\t\t{widget_frameworks_phase} /* Frameworks */ = {{")
     add("\t\t\tisa = PBXFrameworksBuildPhase;")
     add("\t\t\tbuildActionMask = 2147483647;")
     add("\t\t\tfiles = (")
@@ -154,6 +263,7 @@ def main() -> None:
     add("\t\t\tisa = PBXGroup;")
     add("\t\t\tchildren = (")
     add(f"\t\t\t\t{app_group} /* {PROJECT_NAME} */,")
+    add(f"\t\t\t\t{widget_group} /* {WIDGET_NAME} */,")
     add(f"\t\t\t\t{products_group} /* Products */,")
     add("\t\t\t);")
     add("\t\t\tsourceTree = \"<group>\";")
@@ -182,10 +292,22 @@ def main() -> None:
     add("\t\t\tsourceTree = \"<group>\";")
     add("\t\t};")
 
+    add(f"\t\t{widget_group} /* {WIDGET_NAME} */ = {{")
+    add("\t\t\tisa = PBXGroup;")
+    add("\t\t\tchildren = (")
+    for path in WIDGET_SOURCES:
+        add(f"\t\t\t\t{file_ref(path)} /* {path} */,")
+    add(f"\t\t\t\t{file_ref(WIDGET_INFO_PLIST)} /* Info.plist */,")
+    add("\t\t\t);")
+    add(f"\t\t\tpath = {WIDGET_NAME};")
+    add("\t\t\tsourceTree = \"<group>\";")
+    add("\t\t};")
+
     add(f"\t\t{products_group} /* Products */ = {{")
     add("\t\t\tisa = PBXGroup;")
     add("\t\t\tchildren = (")
     add(f"\t\t\t\t{product_id} /* {PROJECT_NAME}.app */,")
+    add(f"\t\t\t\t{widget_product_id} /* {WIDGET_NAME}.appex */,")
     add("\t\t\t);")
     add("\t\t\tname = Products;")
     add("\t\t\tsourceTree = \"<group>\";")
@@ -202,15 +324,34 @@ def main() -> None:
     add(f"\t\t\t\t{sources_phase} /* Sources */,")
     add(f"\t\t\t\t{frameworks_phase} /* Frameworks */,")
     add(f"\t\t\t\t{resources_phase} /* Resources */,")
+    add(f"\t\t\t\t{embed_phase} /* Embed Foundation Extensions */,")
     add("\t\t\t);")
     add("\t\t\tbuildRules = (")
     add("\t\t\t);")
     add("\t\t\tdependencies = (")
+    add(f"\t\t\t\t{widget_dependency} /* PBXTargetDependency */,")
     add("\t\t\t);")
     add(f"\t\t\tname = {PROJECT_NAME};")
     add(f"\t\t\tproductName = {PROJECT_NAME};")
     add(f"\t\t\tproductReference = {product_id} /* {PROJECT_NAME}.app */;")
     add("\t\t\tproductType = \"com.apple.product-type.application\";")
+    add("\t\t};")
+
+    add(f"\t\t{widget_target_id} /* {WIDGET_NAME} */ = {{")
+    add("\t\t\tisa = PBXNativeTarget;")
+    add(f"\t\t\tbuildConfigurationList = {widget_config_list} /* Build configuration list */;")
+    add("\t\t\tbuildPhases = (")
+    add(f"\t\t\t\t{widget_sources_phase} /* Sources */,")
+    add(f"\t\t\t\t{widget_frameworks_phase} /* Frameworks */,")
+    add("\t\t\t);")
+    add("\t\t\tbuildRules = (")
+    add("\t\t\t);")
+    add("\t\t\tdependencies = (")
+    add("\t\t\t);")
+    add(f"\t\t\tname = {WIDGET_NAME};")
+    add(f"\t\t\tproductName = {WIDGET_NAME};")
+    add(f"\t\t\tproductReference = {widget_product_id} /* {WIDGET_NAME}.appex */;")
+    add("\t\t\tproductType = \"com.apple.product-type.app-extension\";")
     add("\t\t};")
     add("/* End PBXNativeTarget section */")
 
@@ -225,6 +366,9 @@ def main() -> None:
     add("\t\t\t\tLastUpgradeCheck = 1600;")
     add("\t\t\t\tTargetAttributes = {")
     add(f"\t\t\t\t\t{target_id} = {{")
+    add("\t\t\t\t\t\tCreatedOnToolsVersion = 16.0;")
+    add("\t\t\t\t\t};")
+    add(f"\t\t\t\t\t{widget_target_id} = {{")
     add("\t\t\t\t\t\tCreatedOnToolsVersion = 16.0;")
     add("\t\t\t\t\t};")
     add("\t\t\t\t};")
@@ -243,6 +387,7 @@ def main() -> None:
     add("\t\t\tprojectRoot = \"\";")
     add("\t\t\ttargets = (")
     add(f"\t\t\t\t{target_id} /* {PROJECT_NAME} */,")
+    add(f"\t\t\t\t{widget_target_id} /* {WIDGET_NAME} */,")
     add("\t\t\t);")
     add("\t\t};")
     add("/* End PBXProject section */")
@@ -273,7 +418,26 @@ def main() -> None:
     add("\t\t\t);")
     add("\t\t\trunOnlyForDeploymentPostprocessing = 0;")
     add("\t\t};")
+    add(f"\t\t{widget_sources_phase} /* Sources */ = {{")
+    add("\t\t\tisa = PBXSourcesBuildPhase;")
+    add("\t\t\tbuildActionMask = 2147483647;")
+    add("\t\t\tfiles = (")
+    for path in widget_all_sources:
+        add(f"\t\t\t\t{widget_build_file(path)} /* {os.path.basename(path)} in Sources */,")
+    add("\t\t\t);")
+    add("\t\t\trunOnlyForDeploymentPostprocessing = 0;")
+    add("\t\t};")
     add("/* End PBXSourcesBuildPhase section */")
+
+    # --- PBXTargetDependency -----------------------------------------------------------
+    add("")
+    add("/* Begin PBXTargetDependency section */")
+    add(f"\t\t{widget_dependency} /* PBXTargetDependency */ = {{")
+    add("\t\t\tisa = PBXTargetDependency;")
+    add(f"\t\t\ttarget = {widget_target_id} /* {WIDGET_NAME} */;")
+    add(f"\t\t\ttargetProxy = {widget_proxy} /* PBXContainerItemProxy */;")
+    add("\t\t};")
+    add("/* End PBXTargetDependency section */")
 
     # --- XCBuildConfiguration ----------------------------------------------------------
     shared_project_settings = [
@@ -298,6 +462,7 @@ def main() -> None:
         "GENERATE_INFOPLIST_FILE = YES",
         "INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = \"Chrono Remote talks to Chrono on your Mac over Bluetooth so you can pause or stop your timer from anywhere nearby.\"",
         "INFOPLIST_KEY_NSCameraUsageDescription = \"The camera is used once, to scan the pairing code shown by Chrono on your Mac.\"",
+        "INFOPLIST_KEY_NSSupportsLiveActivities = YES",
         "INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES",
         "INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES",
         "INFOPLIST_KEY_UILaunchScreen_Generation = YES",
@@ -307,6 +472,26 @@ def main() -> None:
         "MARKETING_VERSION = 1.0",
         f"PRODUCT_BUNDLE_IDENTIFIER = {BUNDLE_ID}",
         "PRODUCT_NAME = \"$(TARGET_NAME)\"",
+        "SWIFT_EMIT_LOC_STRINGS = YES",
+    ]
+
+    widget_settings = [
+        "CODE_SIGN_STYLE = Automatic",
+        "CURRENT_PROJECT_VERSION = 1",
+        "ENABLE_PREVIEWS = YES",
+        # Both: the generated plist supplies the ordinary keys, this file supplies the nested
+        # NSExtension dictionary that no build setting can express. Xcode merges them.
+        "GENERATE_INFOPLIST_FILE = YES",
+        f"INFOPLIST_FILE = {WIDGET_INFO_PLIST}",
+        "INFOPLIST_KEY_CFBundleDisplayName = Chrono",
+        # An extension is loaded from inside the host app, so it looks two directories further
+        # up for shared frameworks than the app does.
+        "LD_RUNPATH_SEARCH_PATHS = (\"$(inherited)\", \"@executable_path/Frameworks\", \"@executable_path/../../Frameworks\")",
+        "MARKETING_VERSION = 1.0",
+        f"PRODUCT_BUNDLE_IDENTIFIER = {WIDGET_BUNDLE_ID}",
+        "PRODUCT_NAME = \"$(TARGET_NAME)\"",
+        # The extension ships inside the app rather than being installed in its own right.
+        "SKIP_INSTALL = YES",
         "SWIFT_EMIT_LOC_STRINGS = YES",
     ]
 
@@ -342,12 +527,18 @@ def main() -> None:
     configuration(oid("config", "project", "Release"), "Release", shared_project_settings, False)
     configuration(oid("config", "target", "Debug"), "Debug", target_settings, True)
     configuration(oid("config", "target", "Release"), "Release", target_settings, False)
+    configuration(oid("config", "widget", "Debug"), "Debug", widget_settings, True)
+    configuration(oid("config", "widget", "Release"), "Release", widget_settings, False)
     add("/* End XCBuildConfiguration section */")
 
     # --- XCConfigurationList -----------------------------------------------------------
     add("")
     add("/* Begin XCConfigurationList section */")
-    for list_id, kind in ((project_config_list, "project"), (target_config_list, "target")):
+    for list_id, kind in (
+        (project_config_list, "project"),
+        (target_config_list, "target"),
+        (widget_config_list, "widget"),
+    ):
         add(f"\t\t{list_id} /* Build configuration list */ = {{")
         add("\t\t\tisa = XCConfigurationList;")
         add("\t\t\tbuildConfigurations = (")
