@@ -1,10 +1,20 @@
 # Chrono
 
+[![CI](https://github.com/ai-slop-in-a-quiet-forge/jira-tracker-mac/actions/workflows/ci.yml/badge.svg)](https://github.com/ai-slop-in-a-quiet-forge/jira-tracker-mac/actions/workflows/ci.yml)
+[![Licence: Apache 2.0](https://img.shields.io/badge/licence-Apache%202.0-blue.svg)](LICENSE)
+[![Platform: macOS 14+](https://img.shields.io/badge/platform-macOS%2014%2B-lightgrey.svg)](#requirements)
+[![Contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg)](CONTRIBUTING.md)
+
 A menu bar time tracker for Jira Cloud that survives a normal working day — the ad-hoc Teams
 call, the drive-by question, the afternoon you forgot to press start.
 
 Entirely local. There is no Chrono server, no Chrono account and no telemetry. The only network
 calls it makes are to your own Jira site.
+
+**Free software, and it will stay that way.** Apache-2.0, no paid tier, no "pro" version, and no
+plan to add one. Time tracking is something a lot of people are made to do and few enjoy; it
+should not also be something they pay for. Contributions very welcome —
+[start here](CONTRIBUTING.md).
 
 ```
 ┌─ menu bar ──────────────────────────────────────────────┐
@@ -209,6 +219,40 @@ a better Mac experience, a ~8 MB install instead of ~200 MB, and real Bluetooth.
 transfer unchanged, which need reimplementing, and what the platform equivalents are for every
 sensor Chrono relies on.
 
-## License
+## Contributing
 
-Apache 2.0. See [LICENSE](LICENSE).
+Yes please — including small things. A typo fix is a real contribution, and you do not need to
+ask before opening a pull request.
+
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** — how to build, test and submit changes, plus the
+  three constraints that keep the codebase testable.
+- **[docs/ROADMAP.md](docs/ROADMAP.md)** — known limitations and planned work, with a rough size
+  on each, and an honest "explicitly not planned" list.
+- **[Good first issues](https://github.com/ai-slop-in-a-quiet-forge/jira-tracker-mac/labels/good%20first%20issue)**
+  — small and self-contained. Hotkey customisation, localisation, inline timesheet editing,
+  branch-name issue detection, Tempo CSV export.
+- **[Windows and Linux](https://github.com/ai-slop-in-a-quiet-forge/jira-tracker-mac/issues/18)**
+  — the single most useful thing anyone could take on, and fully specified in
+  [docs/WINDOWS-PORT.md](docs/WINDOWS-PORT.md) down to the Windows equivalent of every sensor.
+
+Getting going takes one command:
+
+```bash
+swift test        # 112 tests, under a second
+```
+
+The project keeps some commitments that a change should not quietly undo — free forever, no
+server, no telemetry, never invent time, proportionate permissions. They are written out with
+their reasoning in [CONTRIBUTING.md](CONTRIBUTING.md), and they are open to challenge in an
+issue.
+
+Please also read the [Code of Conduct](CODE_OF_CONDUCT.md). For security problems, see
+[SECURITY.md](SECURITY.md) — private reporting, not a public issue.
+
+## Licence
+
+[Apache 2.0](LICENSE), chosen deliberately: it gives contributors an explicit patent grant, and
+it means nobody — including the original author — can take a future version proprietary and
+leave the community behind.
+
+There is no CLA. You keep the copyright on your contribution.

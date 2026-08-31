@@ -1,0 +1,82 @@
+name: Bug report
+description: Something behaves wrongly
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting this. If it involves **time being logged wrongly**, please say so
+        clearly — that is the class of bug we care most about.
+
+        For security problems, please use *Security ▸ Report a vulnerability* instead of a public
+        issue.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you saw, and what you expected instead.
+      placeholder: |
+        I paused the timer at 14:30, came back at 15:00 and resumed. The panel showed 30 minutes
+        more than it should have.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How to reproduce it
+      description: Even a rough sequence helps enormously.
+      placeholder: |
+        1. Start tracking any issue
+        2. Lock the screen for a few minutes
+        3. Unlock and open the panel
+    validations:
+      required: false
+
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version
+      placeholder: "15.1"
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Chrono version
+      description: Settings ▸ Advanced ▸ About, or the commit you built from.
+      placeholder: "1.0.0 (5) or f36e9ee"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part
+      options:
+        - Not sure
+        - Menu bar / panel
+        - Timer behaviour (pause, idle, switching)
+        - Meeting or call detection
+        - Jira sync / worklogs
+        - Timesheet
+        - Phone remote (web)
+        - Phone remote (iOS app)
+        - Settings
+        - Build or install
+    validations:
+      required: true
+
+  - type: textarea
+    id: state
+    attributes:
+      label: Relevant state (optional)
+      description: |
+        For time-tracking bugs, an excerpt of `~/Library/Application Support/Chrono/state.json`
+        is very helpful. **Read it first and redact anything you would not want public** — it
+        contains issue keys and your notes. It never contains credentials.
+      render: json
+    validations:
+      required: false
