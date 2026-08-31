@@ -172,6 +172,33 @@ public actor RemoteCommandVerifier {
         return command
     }
 
+    /// Verifies a signed request that carries no command — the web remote's state read.
+    ///
+    /// A `GET` has no body, so the signed payload is the request path. Reading what someone is
+    /// working on is no less private than changing it, so it is authenticated identically.
+    public func verifySignatureOnly(
+        payload: Data,
+        counter: UInt64,
+        timestamp: Int64,
+        mac: Data,
+        deviceID: String
+    ) throws {
+        guard let secret, !secret.isEmpty else { throw Rejection.notPaired }
+
+        let drift = abs(Double(timestamp) - clock.now.timeIntervalSince1970)
+        guard drift <= RemoteAuth.freshnessWindow else {
+            throw Rejection.stale(driftSeconds: Int(drift))
+        }
+        guard RemoteAuth.isValid(
+            payload: payload, counter: counter, timestamp: timestamp, mac: mac, secret: secret
+        ) else { throw Rejection.badSignature }
+
+        if let last = lastCounters[deviceID], counter <= last {
+            throw Rejection.replayed(counter: counter, lastSeen: last)
+        }
+        lastCounters[deviceID] = counter
+    }
+
     /// Verifies a web-remote request, where the signed payload is the raw HTTP body and the
     /// signature travels in headers.
     public func verifyRequest(

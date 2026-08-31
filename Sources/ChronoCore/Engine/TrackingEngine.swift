@@ -112,6 +112,9 @@ public final class TrackingEngine {
     /// Time tracked today that has no Jira issue behind it yet.
     public var unfiledSecondsToday: TimeInterval { todayRollup.unloggableSeconds }
 
+    /// Where state is written. Surfaced so the UI can show the user their own data.
+    public var storageDirectory: URL? { store.fileStore.directory }
+
     // MARK: - Clock
 
     /// Advances the engine's notion of "now". Called once a second by the app while anything
