@@ -39,6 +39,8 @@ final class WebRemoteServer: @unchecked Sendable {
 
     private(set) var port: UInt16?
     private(set) var lastError: String?
+    /// Guards the one-shot retry, so a genuinely broken network cannot loop.
+    private var didFallBackToAssignedPort = false
 
     /// Cap on request size. The largest legitimate request is a signed command with a note in
     /// it; anything vastly bigger is either a bug or an attack.
@@ -47,21 +49,25 @@ final class WebRemoteServer: @unchecked Sendable {
     // MARK: - Lifecycle
 
     func start(preferredPort: UInt16) throws {
+        let wasFallingBack = didFallBackToAssignedPort
         stop()
+        didFallBackToAssignedPort = wasFallingBack
 
         let parameters = NWParameters.tcp
         parameters.allowLocalEndpointReuse = true
         // No point advertising over anything but the local network.
         parameters.includePeerToPeer = false
 
+        // Try the configured port first, so the shortcut saved on the phone keeps working across
+        // restarts. If it is taken, `stateUpdateHandler` retries with an OS-assigned one —
+        // binding failures surface asynchronously, so they cannot be caught here.
         let listener: NWListener
         if preferredPort == 0 {
             listener = try NWListener(using: parameters)
-        } else {
-            guard let port = NWEndpoint.Port(rawValue: preferredPort) else {
-                throw RemoteError.invalidPort
-            }
+        } else if let port = NWEndpoint.Port(rawValue: preferredPort) {
             listener = try NWListener(using: parameters, on: port)
+        } else {
+            throw RemoteError.invalidPort
         }
 
         listener.newConnectionHandler = { [weak self] connection in
@@ -73,8 +79,20 @@ final class WebRemoteServer: @unchecked Sendable {
                 self?.port = listener.port?.rawValue
                 ChronoLog.remote.info("Web remote listening on port \(listener.port?.rawValue ?? 0)")
             case .failed(let error):
-                self?.lastError = error.localizedDescription
                 ChronoLog.remote.error("Web remote failed: \(error.localizedDescription, privacy: .public)")
+                // Almost always "port already in use". Retry once on an assigned port so the
+                // remote still works, rather than leaving the user with nothing.
+                //
+                // Defensive: not exercised by a test. `allowLocalEndpointReuse` means a second
+                // bind of the same port succeeds rather than colliding, and this machine let a
+                // normal process bind port 80, so no bind failure could be provoked to trigger it.
+                if let self, preferredPort != 0, !self.didFallBackToAssignedPort {
+                    self.didFallBackToAssignedPort = true
+                    ChronoLog.remote.info("Retrying the web remote on an OS-assigned port")
+                    self.restartOnAssignedPort()
+                } else {
+                    self?.lastError = error.localizedDescription
+                }
             case .cancelled:
                 self?.port = nil
             default:
@@ -90,6 +108,21 @@ final class WebRemoteServer: @unchecked Sendable {
         listener?.cancel()
         listener = nil
         port = nil
+        didFallBackToAssignedPort = false
+    }
+
+    /// Second attempt after the configured port turned out to be in use.
+    private func restartOnAssignedPort() {
+        listener?.cancel()
+        listener = nil
+        port = nil
+        do {
+            try start(preferredPort: 0)
+            // `start` resets the guard, so re-arm it: there must be no third attempt.
+            didFallBackToAssignedPort = true
+        } catch {
+            lastError = error.localizedDescription
+        }
     }
 
     var isRunning: Bool { listener != nil && port != nil }

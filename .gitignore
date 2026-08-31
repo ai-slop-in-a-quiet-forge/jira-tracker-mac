@@ -4,5 +4,4 @@ dist/
 DerivedData/
 *.xcuserdatad
 xcuserdata/
-Sources/ChronoApp/Resources/Icons/
 .DS_Store

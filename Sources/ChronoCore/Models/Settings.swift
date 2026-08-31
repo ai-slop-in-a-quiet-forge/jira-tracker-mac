@@ -99,8 +99,11 @@ public struct Settings: Codable, Sendable, Equatable {
 
     public var bluetoothRemoteEnabled: Bool = false
     public var webRemoteEnabled: Bool = false
-    /// 0 asks the OS for any free port, which avoids clashing with whatever else is running.
-    public var webRemotePort: Int = 0
+    /// A **fixed** port by default, and that matters: the phone saves the remote to its Home
+    /// Screen as a URL. An ephemeral port would change on every launch and break that shortcut
+    /// after the first restart. 47632 is in the dynamic range and not registered to anything.
+    /// Set to 0 to let the OS pick, accepting that the phone will need re-pairing.
+    public var webRemotePort: Int = 47_632
     /// Require a confirmation on the Mac before a remote can stop (as opposed to pause) a timer.
     public var remoteConfirmDestructiveActions: Bool = false
 

@@ -62,8 +62,12 @@ cd jira-tracker-mac
 Scripts/build-app.sh --install --run
 ```
 
-That builds `dist/Chrono.app`, copies it to `/Applications` and launches it. It appears in the
-menu bar, not the Dock.
+That builds `dist/Chrono.app`, installs it and launches it. It appears in the menu bar, not the
+Dock.
+
+If `/Applications` is not writable — common on a managed or corporate Mac — it installs to
+`~/Applications` instead. That works identically, launch at login included, and needs no admin
+password.
 
 Other options:
 
@@ -148,7 +152,8 @@ Both transports are opt-in. Nothing listens or advertises until you turn it on i
 Settings ▸ Phone.
 
 - **Web remote** — the Mac serves one self-contained page on your local network. Scan a QR code,
-  Add to Home Screen, done. No install, nothing to expire. Needs the same Wi-Fi.
+  Add to Home Screen, done. No install, nothing to expire. Needs the same Wi-Fi. Uses a fixed
+  port (47632 by default) so the shortcut you save on your phone keeps working across restarts.
 - **iOS app** — a real app over Bluetooth LE, so it works with no Wi-Fi at all. See
   [docs/IOS-APP.md](docs/IOS-APP.md).
 

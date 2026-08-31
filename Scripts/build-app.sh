@@ -108,19 +108,32 @@ codesign --force --deep --sign - --timestamp=none "$APP" >/dev/null 2>&1 || {
 SIZE="$(du -sh "$APP" | cut -f1)"
 echo "==> Built $APP ($SIZE)"
 
+INSTALLED_AT=""
+
 if [ "$DO_INSTALL" = "1" ]; then
-  echo "==> Installing to /Applications"
-  # Quit any running copy first, or the copy will fail on a busy binary.
+  # Prefer /Applications, but fall back to ~/Applications when it is not writable. On a
+  # managed or corporate Mac it usually is not, and requiring sudo to install a menu bar
+  # utility is a poor trade — a per-user install works identically, including launch at login.
+  if [ -w "/Applications" ]; then
+    INSTALL_DIR="/Applications"
+  else
+    INSTALL_DIR="$HOME/Applications"
+    mkdir -p "$INSTALL_DIR"
+    echo "    /Applications is not writable; installing per-user instead"
+  fi
+
+  echo "==> Installing to $INSTALL_DIR"
+  # Quit any running copy first, or the copy fails on a busy binary.
   osascript -e 'quit app "Chrono"' >/dev/null 2>&1 || true
   sleep 1
-  rm -rf "/Applications/$APP_NAME.app"
-  cp -R "$APP" "/Applications/"
-  echo "    installed /Applications/$APP_NAME.app"
+  rm -rf "$INSTALL_DIR/$APP_NAME.app"
+  cp -R "$APP" "$INSTALL_DIR/"
+  INSTALLED_AT="$INSTALL_DIR/$APP_NAME.app"
+  echo "    installed $INSTALLED_AT"
 fi
 
 if [ "$DO_RUN" = "1" ]; then
-  TARGET="$APP"
-  [ "$DO_INSTALL" = "1" ] && TARGET="/Applications/$APP_NAME.app"
+  TARGET="${INSTALLED_AT:-$APP}"
   echo "==> Launching"
   open "$TARGET"
 fi

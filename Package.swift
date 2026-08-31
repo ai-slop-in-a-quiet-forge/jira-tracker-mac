@@ -28,7 +28,6 @@ let package = Package(
             name: "ChronoApp",
             dependencies: ["ChronoCore"],
             path: "Sources/ChronoApp",
-            resources: [.copy("Resources")],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
         .executableTarget(
