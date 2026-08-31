@@ -60,11 +60,32 @@ Chrono is built around the interruptions rather than in spite of them:
 
 ## Requirements
 
-- macOS 14 (Sonoma) or later
-- Xcode 15+ or the Swift 5.9+ toolchain, to build it
+- macOS 14 (Sonoma) or later, Apple Silicon or Intel
 - A Jira Cloud API token ([create one here](https://id.atlassian.com/manage-profile/security/api-tokens))
+- To build from source: Xcode 15+ or the Swift 5.9+ toolchain
 
-## Install
+## Download
+
+[**Latest release**](https://github.com/ai-slop-in-a-quiet-forge/jira-tracker-mac/releases/latest)
+— a universal build, ~3 MB zipped. Unzip and drag `Chrono.app` to Applications.
+
+**macOS will refuse to open it the first time.** Chrono is not signed with an Apple Developer ID,
+because that needs a paid account and someone willing to hold it (see
+[docs/ROADMAP.md](docs/ROADMAP.md)). So Gatekeeper blocks the first launch:
+
+1. Double-click Chrono. macOS says it cannot verify the developer — dismiss the dialog.
+2. Open **System Settings ▸ Privacy & Security**, scroll down, click **Open Anyway**.
+3. Confirm. macOS remembers the choice.
+
+On macOS 15 and later the old right-click ▸ Open shortcut no longer works for this; Privacy &
+Security is the only route. Two consequences worth knowing before you decide: the build is
+ad-hoc signed, so its identity changes with every release — macOS re-asks for Bluetooth and Local
+Network permission after an update, and the Keychain re-prompts once for your Jira token.
+
+If none of that appeals, build from source instead. The result is identical and skips all of it,
+because a locally built app is never quarantined.
+
+## Install from source
 
 ```bash
 git clone git@github.com:ai-slop-in-a-quiet-forge/jira-tracker-mac.git
@@ -84,6 +105,7 @@ Other options:
 ```bash
 Scripts/build-app.sh            # just build into dist/
 Scripts/build-app.sh --debug    # faster build while iterating
+Scripts/build-app.sh --universal --zip   # what a release builds: arm64 + x86_64, then a zip
 swift test                      # run the test suite
 ```
 

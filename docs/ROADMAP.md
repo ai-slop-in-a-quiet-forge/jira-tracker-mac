@@ -73,16 +73,20 @@ remove the main reason to leave the app.
 *Labels: `enhancement`, `area: ui`, `good first issue`*
 
 ### No update mechanism — **M**
-You rebuild from source. A Homebrew cask would cover most people; Sparkle would be nicer but
-means hosting an appcast, which brushes against the no-server principle. A cask is probably the
-right answer.
+Tagged releases publish a zip, but nothing tells a running copy that a newer one exists — you
+check by hand. A Homebrew cask would cover most people; Sparkle would be nicer but means hosting
+an appcast, which brushes against the no-server principle. A cask is probably the right answer,
+and now has a stable artifact URL to point at.
 
 *Labels: `packaging`, `help wanted`*
 
 ### Not signed or notarised — **M**
-Releases are ad-hoc signed, so a downloaded build gets Gatekeeper warnings. Proper signing needs
-a Developer ID, which needs someone willing to hold it. Until then, building from source is the
-supported path.
+Releases are ad-hoc signed, so a downloaded build is quarantined and the first launch has to be
+approved through System Settings ▸ Privacy & Security. On macOS 15 the right-click ▸ Open
+shortcut no longer works, so that is the only route. Ad-hoc signing also means the code identity
+changes every release, which re-triggers the Bluetooth and Local Network prompts and one Keychain
+prompt on each update. Proper signing needs a Developer ID, which needs someone willing to hold
+and renew it. Until then, building from source avoids all of it.
 
 *Labels: `packaging`, `help wanted`*
 

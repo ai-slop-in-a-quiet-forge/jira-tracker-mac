@@ -1,0 +1,118 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  # Lets a release be rehearsed end to end without tagging. The upload step is skipped.
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and publish
+    # Pinned to match ci.yml, so a release is built by the same toolchain that tested it.
+    runs-on: macos-15
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # build-app.sh derives CFBundleVersion from the commit count, which needs real history.
+          fetch-depth: 0
+
+      - name: Show the toolchain
+        run: |
+          swift --version
+          xcodebuild -version
+
+      # A tagged build that ships a different version than the tag claims is worse than no
+      # release at all, because the mismatch surfaces later as an unreproducible bug report.
+      - name: Tag matches the version in build-app.sh
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          SCRIPT_VERSION="$(sed -n 's/^VERSION="\(.*\)"$/\1/p' Scripts/build-app.sh)"
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          echo "script: $SCRIPT_VERSION   tag: $TAG_VERSION"
+          if [ "$SCRIPT_VERSION" != "$TAG_VERSION" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match VERSION=$SCRIPT_VERSION in Scripts/build-app.sh"
+            exit 1
+          fi
+
+      # Nothing unsigned goes out the door untested. This is the same suite ci.yml runs; it is
+      # repeated here so a tag pushed to an unbuilt commit cannot skip it.
+      - name: Test
+        run: swift test
+
+      - name: Build the universal app and archive
+        run: Scripts/build-app.sh --universal --zip
+
+      - name: Check the artifact
+        run: |
+          APP=dist/Chrono.app
+          test -x "$APP/Contents/MacOS/Chrono"
+          test -f "$APP/Contents/Resources/AppIcon.icns"
+          test "$(defaults read "$PWD/$APP/Contents/Info" LSUIElement)" = "1"
+
+          # Both slices, or Intel Macs get a download that cannot launch.
+          ARCHS="$(lipo -archs "$APP/Contents/MacOS/Chrono")"
+          echo "architectures: $ARCHS"
+          case "$ARCHS" in
+            *arm64*) ;; *) echo "::error::missing the arm64 slice"; exit 1 ;;
+          esac
+          case "$ARCHS" in
+            *x86_64*) ;; *) echo "::error::missing the x86_64 slice"; exit 1 ;;
+          esac
+
+          # Verify what a user actually downloads, not what the build left behind: unpack the
+          # archive and check the signature survived the round trip.
+          rm -rf /tmp/verify && mkdir -p /tmp/verify
+          ditto -x -k dist/Chrono-*.zip /tmp/verify
+          codesign --verify --deep --strict --verbose=2 /tmp/verify/Chrono.app
+
+      - name: Record the checksum
+        id: checksum
+        run: |
+          ZIP="$(ls dist/Chrono-*.zip)"
+          echo "zip=$ZIP" >> "$GITHUB_OUTPUT"
+          echo "sha256=$(shasum -a 256 "$ZIP" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+
+      - name: Publish the release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ZIP: ${{ steps.checksum.outputs.zip }}
+          SHA256: ${{ steps.checksum.outputs.sha256 }}
+        run: |
+          # gh is preinstalled on the runner. The repo deliberately carries no third-party
+          # dependencies (see .github/dependabot.yml), and that extends to release tooling.
+          cat > notes.md <<EOF
+          Universal build for Apple Silicon and Intel Macs. Requires macOS 14 or later.
+
+          ## Installing
+
+          Unzip and drag **Chrono.app** to Applications. Chrono is **not signed with an Apple
+          Developer ID**, so macOS will refuse to open it the first time:
+
+          1. Double-click Chrono. macOS says it cannot verify the developer — leave the dialog.
+          2. Open **System Settings ▸ Privacy & Security**, scroll down, and click **Open Anyway**.
+          3. Confirm. macOS remembers the choice for this copy.
+
+          On macOS 15 and later, right-click ▸ Open no longer works as a shortcut for this — the
+          Privacy & Security route is the only one. If you would rather not do any of that,
+          [build from source](https://github.com/${GITHUB_REPOSITORY}#install): the result is
+          identical and carries no quarantine flag.
+
+          Because the build is ad-hoc signed, its identity changes with every release. macOS will
+          re-ask for Bluetooth and Local Network permission after an update, and the Keychain will
+          re-prompt once for the Jira token. That is expected, not a compromise.
+
+          \`\`\`
+          sha256  ${SHA256}
+          \`\`\`
+          EOF
+
+          gh release create "$GITHUB_REF_NAME" "$ZIP" \
+            --title "Chrono $GITHUB_REF_NAME" \
+            --notes-file notes.md \
+            --verify-tag
