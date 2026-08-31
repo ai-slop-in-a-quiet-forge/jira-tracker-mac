@@ -1,0 +1,8 @@
+# Chrono has no third-party package dependencies, which is deliberate — see CONTRIBUTING.md.
+# The only thing worth keeping current is the Actions used by CI.
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"

@@ -1,0 +1,125 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  # A new push supersedes an in-flight run for the same branch.
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Build and test
+    # Pinned rather than macos-latest so a green run stays reproducible. Bump deliberately.
+    runs-on: macos-15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show the toolchain
+        run: |
+          swift --version
+          xcodebuild -version
+
+      - name: Build
+        run: swift build
+
+      - name: Test
+        run: swift test
+
+      # Warnings are not errors here, but they should not accumulate unnoticed either.
+      - name: Fail on new warnings
+        run: |
+          rm -rf .build
+          swift build -c release --product ChronoApp 2>&1 | tee build.log
+          if grep -q "warning:" build.log; then
+            echo "::error::The release build produced warnings"
+            grep "warning:" build.log | sort -u
+            exit 1
+          fi
+
+      - name: Assemble the app bundle
+        run: Scripts/build-app.sh --debug
+
+      - name: Check the bundle is well formed
+        run: |
+          APP=dist/Chrono.app
+          test -x "$APP/Contents/MacOS/Chrono"
+          test -f "$APP/Contents/Info.plist"
+          test -f "$APP/Contents/Resources/AppIcon.icns"
+          # A menu bar app must not claim a Dock icon.
+          test "$(defaults read "$PWD/$APP/Contents/Info" LSUIElement)" = "1"
+          echo "bundle size: $(du -sh "$APP" | cut -f1)"
+
+  ios:
+    name: iOS remote
+    runs-on: macos-15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # The generated project is committed, so it must match its generator. Catching drift here
+      # is much kinder than someone discovering a stale project after adding a file.
+      - name: Xcode project is in sync with its generator
+        run: |
+          python3 Scripts/generate-ios-project.py
+          if ! git diff --quiet ios/; then
+            echo "::error::ios/ is out of date — re-run Scripts/generate-ios-project.py and commit"
+            git diff --stat ios/
+            exit 1
+          fi
+
+      # Type-checking against the iOS SDK verifies the shared protocol files still compile for
+      # iOS, without needing a simulator runtime on the runner.
+      - name: Type-check the iOS sources
+        run: |
+          SDK=$(xcrun --sdk iphoneos --show-sdk-path)
+          swiftc -typecheck \
+            -sdk "$SDK" \
+            -target arm64-apple-ios17.0 \
+            -swift-version 5 \
+            ios/ChronoRemote/ChronoRemote/*.swift \
+            Sources/ChronoCore/Util/Clock.swift \
+            Sources/ChronoCore/Remote/RemoteProtocol.swift \
+            Sources/ChronoCore/Remote/RemoteAuth.swift
+
+      # Built for the simulator rather than a device: runners have simulator runtimes, and this
+      # additionally exercises the asset catalog, which a device build on a machine without a
+      # simulator runtime cannot (actool needs one even for a device build).
+      - name: Build the app
+        run: |
+          xcodebuild -project ios/ChronoRemote/ChronoRemote.xcodeproj \
+            -scheme ChronoRemote \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -configuration Debug \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+  docs:
+    name: Docs and hygiene
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: No secrets committed
+        run: |
+          # Cheap, high-value guard. Jira Cloud tokens start ATATT; 1Password references are
+          # fine (they are pointers, not secrets), so they are excluded.
+          if grep -rInE 'ATATT[A-Za-z0-9_-]{20,}' --exclude-dir=.git . ; then
+            echo "::error::What looks like a Jira API token is committed"
+            exit 1
+          fi
+          if grep -rIn 'BEGIN [A-Z ]*PRIVATE KEY' --exclude-dir=.git . ; then
+            echo "::error::A private key is committed"
+            exit 1
+          fi
+          echo "clean"
+
+      - name: Internal doc links resolve
+        run: python3 Scripts/check-doc-links.py --ci

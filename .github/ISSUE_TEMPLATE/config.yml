@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/ai-slop-in-a-quiet-forge/jira-tracker-mac/security/advisories/new
+    about: Please report security problems privately, not as a public issue.
+  - name: How Chrono is put together
+    url: https://github.com/ai-slop-in-a-quiet-forge/jira-tracker-mac/blob/main/docs/ARCHITECTURE.md
+    about: The design decisions and what each was defending against.
+  - name: Contributing guide
+    url: https://github.com/ai-slop-in-a-quiet-forge/jira-tracker-mac/blob/main/CONTRIBUTING.md
+    about: How to build, test and submit changes.

@@ -1,0 +1,41 @@
+name: Feature request
+description: Suggest something Chrono should do
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before writing, it is worth a glance at
+        [docs/ROADMAP.md](../../blob/main/docs/ROADMAP.md) — it lists what is already planned, and
+        an "Explicitly not planned" section with the reasoning. If your idea is in that last
+        section, make the case anyway; the reasoning is open to challenge.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve
+      description: |
+        The situation, not the solution. "I get pulled into unplanned support work and cannot
+        tell how much of my week went on it" is far more useful than "add a tag field".
+    validations:
+      required: true
+
+  - type: textarea
+    id: idea
+    attributes:
+      label: What you have in mind
+      description: How you imagine it working. A rough sketch is fine.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: help
+    attributes:
+      label: Would you like to build it?
+      description: Entirely optional, and no obligation either way.
+      options:
+        - "I would like to try, with some guidance"
+        - "I would like to try, unaided"
+        - "I am suggesting it for someone else to pick up"
+    validations:
+      required: false
