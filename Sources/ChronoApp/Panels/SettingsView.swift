@@ -154,6 +154,7 @@ struct JiraConnectionForm: View {
     @State private var onePasswordRef = ""
     @State private var useOnePassword = false
     @State private var isWorking = false
+    @State private var revealToken = false
     @State private var message: String?
     @State private var messageIsError = false
 
@@ -242,11 +243,18 @@ struct JiraConnectionForm: View {
                 placeholder: "your-company.atlassian.net",
                 text: $site
             )
+            .onChange(of: site) { _, value in
+                environment.mutateSettings { $0.siteURL = value }
+            }
+
             LabeledField(
                 label: "Your Jira email",
                 placeholder: "you@company.com",
                 text: $email
             )
+            .onChange(of: email) { _, value in
+                environment.mutateSettings { $0.accountEmail = value }
+            }
 
             Picker("", selection: $useOnePassword) {
                 Text("Paste an API token").tag(false)
@@ -270,10 +278,32 @@ struct JiraConnectionForm: View {
                     .fixedSize(horizontal: false, vertical: true)
             } else {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("API token").font(.system(size: 11, weight: .medium))
-                    SecureField("Paste the token from id.atlassian.com", text: $token)
-                        .textFieldStyle(.roundedBorder)
-                        .font(.system(size: 11.5))
+                    HStack {
+                        Text("API token").font(.system(size: 11, weight: .medium))
+                        Spacer()
+                        Button("Paste") {
+                            if let clipboard = NSPasteboard.general.string(forType: .string) {
+                                token = clipboard.trimmingCharacters(in: .whitespacesAndNewlines)
+                            }
+                        }
+                        .buttonStyle(QuietButtonStyle(compact: true))
+                        .help("Paste the token from the clipboard")
+                    }
+                    if revealToken {
+                        TextField("Paste the token from id.atlassian.com", text: $token)
+                            .textFieldStyle(.roundedBorder)
+                            .font(.system(size: 11.5, design: .monospaced))
+                    } else {
+                        SecureField("Paste the token from id.atlassian.com", text: $token)
+                            .textFieldStyle(.roundedBorder)
+                            .font(.system(size: 11.5))
+                    }
+                    HStack {
+                        Toggle("Show token", isOn: $revealToken)
+                            .font(.system(size: 10.5))
+                            .toggleStyle(.checkbox)
+                        Spacer()
+                    }
                     Button("Create an API token in your browser…") {
                         if let url = URL(string: "https://id.atlassian.com/manage-profile/security/api-tokens") {
                             NSWorkspace.shared.open(url)
