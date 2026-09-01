@@ -211,12 +211,27 @@ struct SegmentRow: View {
     @Environment(AppEnvironment.self) private var environment
     @State private var hovering = false
     @State private var showingPicker = false
+    @State private var showingTimeEditor = false
 
     var body: some View {
         HStack(spacing: Theme.Spacing.small) {
-            Text("\(segment.start.formatted(date: .omitted, time: .shortened)) – \(segment.end?.formatted(date: .omitted, time: .shortened) ?? "now")")
-                .font(.system(size: 10.5, design: .monospaced))
-                .foregroundStyle(.secondary)
+            let times = "\(segment.start.formatted(date: .omitted, time: .shortened)) – \(segment.end?.formatted(date: .omitted, time: .shortened) ?? "now")"
+            if segment.isOpen {
+                // A running entry's times belong to the clock, not to an edit form.
+                Text(times)
+                    .font(.system(size: 10.5, design: .monospaced))
+                    .foregroundStyle(.secondary)
+            } else {
+                Button(times) { showingTimeEditor = true }
+                    .buttonStyle(.plain)
+                    .font(.system(size: 10.5, design: .monospaced))
+                    .foregroundStyle(.secondary)
+                    .help("Correct the start or end time")
+                    .popover(isPresented: $showingTimeEditor, arrowEdge: .bottom) {
+                        SegmentTimeEditor(segment: segment) { showingTimeEditor = false }
+                            .environment(environment)
+                    }
+            }
 
             if segment.trimmedIdle > 0 {
                 Chip(
@@ -244,6 +259,10 @@ struct SegmentRow: View {
                 .monospacedDigit()
 
             if hovering && !segment.isOpen {
+                Button("Edit…") { showingTimeEditor = true }
+                    .buttonStyle(QuietButtonStyle(compact: true))
+                    .help("Correct the start or end time")
+
                 Button("Move…") { showingPicker = true }
                     .buttonStyle(QuietButtonStyle(compact: true))
                     .popover(isPresented: $showingPicker, arrowEdge: .bottom) {
@@ -268,6 +287,148 @@ struct SegmentRow: View {
         .padding(.vertical, 4)
         .background(hovering ? Color.primary.opacity(0.05) : Color.clear, in: RoundedRectangle(cornerRadius: 6))
         .onHover { hovering = $0 }
+    }
+}
+
+/// Corrects an entry's start and end.
+///
+/// Mirrors `BackfillButton`'s form, with one difference that matters: the pickers are *bounded*
+/// by the neighbouring entries. Offering a time that will then be refused is a worse experience
+/// than not offering it, so the window comes from `TrackingEngine.bounds(forSegment:)` and the
+/// engine's rejection is a backstop rather than the primary guard.
+struct SegmentTimeEditor: View {
+    let segment: WorkSegment
+    let onClose: () -> Void
+
+    @Environment(AppEnvironment.self) private var environment
+    @State private var start: Date
+    @State private var end: Date
+    @State private var rejection: String?
+
+    init(segment: WorkSegment, onClose: @escaping () -> Void) {
+        self.segment = segment
+        self.onClose = onClose
+        _start = State(initialValue: segment.start)
+        _end = State(initialValue: segment.end ?? segment.start)
+    }
+
+    private var bounds: SegmentBounds? {
+        environment.engine.bounds(forSegment: segment.id)
+    }
+
+    private var isValid: Bool {
+        bounds?.allows(start: start, end: end) ?? (end > start)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
+            Text("Correct this entry\u{2019}s times")
+                .font(.system(size: 12.5, weight: .semibold))
+
+            DatePicker("From", selection: $start, in: startRange, displayedComponents: [.hourAndMinute])
+                .font(.system(size: 11.5))
+            DatePicker("To", selection: $end, in: endRange, displayedComponents: [.hourAndMinute])
+                .font(.system(size: 11.5))
+
+            if let rejection {
+                Text(rejection)
+                    .font(.system(size: 10.5))
+                    .foregroundStyle(.orange)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else if end <= start {
+                Text("The end time needs to be after the start.")
+                    .font(.system(size: 10.5))
+                    .foregroundStyle(.orange)
+            } else {
+                HStack(spacing: 6) {
+                    Text(DurationFormat.humane(end.timeIntervalSince(start)))
+                        .font(.system(size: 11, weight: .medium))
+                    let delta = end.timeIntervalSince(start) - segment.closedDuration
+                    if abs(delta) >= 1 {
+                        Text(delta > 0
+                            ? "+\(DurationFormat.humane(delta))"
+                            : "-\(DurationFormat.humane(-delta))")
+                            .font(.system(size: 10.5))
+                            .foregroundStyle(delta > 0 ? .green : .orange)
+                    }
+                }
+                .foregroundStyle(.secondary)
+            }
+
+            if let limits = boundsDescription {
+                Text(limits)
+                    .font(.system(size: 10))
+                    .foregroundStyle(.tertiary)
+            }
+
+            HStack {
+                Spacer()
+                Button("Cancel") { onClose() }
+                    .buttonStyle(QuietButtonStyle(compact: true))
+                Button("Save") { save() }
+                    .buttonStyle(FilledButtonStyle(compact: true))
+                    .disabled(!isValid)
+            }
+        }
+        .padding(Theme.Spacing.large)
+        .frame(width: 300)
+    }
+
+    /// Clamped so the picker cannot even offer an overlapping time. The upper bound for the
+    /// start is the current end (and vice versa), which keeps the entry from inverting.
+    private var startRange: ClosedRange<Date> {
+        let lower = bounds?.earliestStart ?? segment.start.addingTimeInterval(-86_400)
+        let upper = max(lower, end)
+        return lower...upper
+    }
+
+    private var endRange: ClosedRange<Date> {
+        let upper = bounds?.latestEnd ?? (segment.end ?? segment.start).addingTimeInterval(86_400)
+        let lower = min(start, upper)
+        return lower...upper
+    }
+
+    private var boundsDescription: String? {
+        guard let bounds else { return nil }
+        let formatter: (Date) -> String = { $0.formatted(date: .omitted, time: .shortened) }
+        switch (bounds.earliestStart, bounds.latestEnd) {
+        case (let earliest?, let latest?):
+            return "Must stay between \(formatter(earliest)) and \(formatter(latest))."
+        case (let earliest?, nil):
+            return "Cannot start before \(formatter(earliest))."
+        case (nil, let latest?):
+            return "Cannot end after \(formatter(latest))."
+        case (nil, nil):
+            return nil
+        }
+    }
+
+    private func save() {
+        switch environment.engine.editSegmentTimes(id: segment.id, start: start, end: end) {
+        case .applied:
+            rejection = nil
+            onClose()
+        case .rejected(let reason):
+            // The bounded pickers should make these unreachable; showing the reason rather than
+            // failing silently is what makes that assumption safe to hold.
+            rejection = Self.describe(reason)
+        }
+    }
+
+    private static func describe(_ reason: SegmentEditRejection) -> String {
+        let time: (Date) -> String = { $0.formatted(date: .omitted, time: .shortened) }
+        switch reason {
+        case .notFound:
+            return "That entry no longer exists."
+        case .endNotAfterStart:
+            return "The end time needs to be after the start."
+        case .overlapsPrevious(let earliest):
+            return "Cannot start before \(time(earliest)) — the previous entry ends there."
+        case .overlapsNext(let latest):
+            return "Cannot end after \(time(latest)) — the next entry starts there."
+        case .segmentIsOpen:
+            return "This entry is still running. Stop the timer first."
+        }
     }
 }
 
