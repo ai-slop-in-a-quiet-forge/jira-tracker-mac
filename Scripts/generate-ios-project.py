@@ -20,25 +20,43 @@ BUNDLE_ID = "in.chrono.remote"
 DEPLOYMENT_TARGET = "17.0"
 SWIFT_VERSION = "5.0"
 
-# The Apple Developer team to sign with, which is per-person rather than per-project: a team id
-# committed here would be one contributor's identity imposed on everyone else's build. Set it
-# once per machine and regenerate:
+# The Apple Developer team to sign with is per-person, not per-project: a team id committed here
+# would be one contributor's identity imposed on everyone else's build.
 #
-#     export CHRONO_DEVELOPMENT_TEAM=XXXXXXXXXX
-#     python3 Scripts/generate-ios-project.py
+# It therefore lives in `Local.xcconfig`, which is generated once and gitignored. An xcconfig is
+# the right home rather than a build setting written into the project, because the project file
+# is *generated and committed*: a per-machine value inside it shows up as a permanent local
+# modification, and has to be stashed around every rebase. The xcconfig keeps the tracked file
+# byte-identical for everyone.
 #
-# Left unset, the project builds for the simulator exactly as before; only device builds and
-# archives need a team. Without this the setting has to be re-added by hand in Xcode after every
-# regeneration, and quietly disappears the next time someone adds a source file.
-DEVELOPMENT_TEAM = os.environ.get("CHRONO_DEVELOPMENT_TEAM", "").strip()
+#     echo 'DEVELOPMENT_TEAM = XXXXXXXXXX' > ios/ChronoRemote/Local.xcconfig
+#
+# Or set CHRONO_DEVELOPMENT_TEAM and regenerate, which seeds the file for you. Left unset the
+# project builds for the simulator exactly as before; only device builds and archives need a team.
+LOCAL_XCCONFIG = "Local.xcconfig"
+SEED_DEVELOPMENT_TEAM = os.environ.get("CHRONO_DEVELOPMENT_TEAM", "").strip()
 
 
-def signing_settings() -> list[str]:
-    """`CODE_SIGN_STYLE` plus the team, when one is configured."""
-    settings = ["CODE_SIGN_STYLE = Automatic"]
-    if DEVELOPMENT_TEAM:
-        settings.append(f"DEVELOPMENT_TEAM = {DEVELOPMENT_TEAM}")
-    return settings
+def write_local_xcconfig() -> None:
+    """Creates `Local.xcconfig` if it is missing, so Xcode never points at a file that is not
+    there. Never overwrites: it is the one file here a person is expected to edit."""
+    path = PROJECT_DIR / LOCAL_XCCONFIG
+    if path.exists():
+        return
+    team_line = (
+        f"DEVELOPMENT_TEAM = {SEED_DEVELOPMENT_TEAM}"
+        if SEED_DEVELOPMENT_TEAM
+        else "// DEVELOPMENT_TEAM = XXXXXXXXXX"
+    )
+    path.write_text(
+        "// Per-machine build settings. Gitignored: a team id is your identity, not the\n"
+        "// project's, and committing one would sign everyone else's build as you.\n"
+        "//\n"
+        "// Find yours in Xcode > Settings > Accounts. Only device builds and archives need it;\n"
+        "// the simulator does not.\n"
+        f"{team_line}\n"
+    )
+    print(f"wrote {path.relative_to(ROOT)}")
 
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -103,6 +121,7 @@ def oid(*parts: str) -> str:
 
 def main() -> None:
     XCODEPROJ.mkdir(parents=True, exist_ok=True)
+    write_local_xcconfig()
 
     # --- object ids -------------------------------------------------------------------
     project_id = oid("project")
@@ -228,6 +247,10 @@ def main() -> None:
             f"\t\t{file_ref(path)} /* {path} */ = {{isa = PBXFileReference; "
             f"lastKnownFileType = sourcecode.swift; path = {path}; sourceTree = \"<group>\"; }};"
         )
+    add(
+        f"\t\t{file_ref(LOCAL_XCCONFIG)} /* {LOCAL_XCCONFIG} */ = {{isa = PBXFileReference; "
+        f"lastKnownFileType = text.xcconfig; path = {LOCAL_XCCONFIG}; sourceTree = \"<group>\"; }};"
+    )
     for path in SHARED_SOURCES:
         name = os.path.basename(path)
         # SOURCE_ROOT is the directory containing the .xcodeproj, so these relative paths
@@ -285,6 +308,7 @@ def main() -> None:
     add("\t\t\tchildren = (")
     add(f"\t\t\t\t{app_group} /* {PROJECT_NAME} */,")
     add(f"\t\t\t\t{widget_group} /* {WIDGET_NAME} */,")
+    add(f"\t\t\t\t{file_ref(LOCAL_XCCONFIG)} /* {LOCAL_XCCONFIG} */,")
     add(f"\t\t\t\t{products_group} /* Products */,")
     add("\t\t\t);")
     add("\t\t\tsourceTree = \"<group>\";")
@@ -475,7 +499,7 @@ def main() -> None:
     target_settings = [
         "ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon",
         "ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = \"\"",
-        *signing_settings(),
+        "CODE_SIGN_STYLE = Automatic",
         "CURRENT_PROJECT_VERSION = 1",
         "ENABLE_PREVIEWS = YES",
         # The Info.plist is generated from these build settings, so there is no plist file to
@@ -497,7 +521,7 @@ def main() -> None:
     ]
 
     widget_settings = [
-        *signing_settings(),
+        "CODE_SIGN_STYLE = Automatic",
         "CURRENT_PROJECT_VERSION = 1",
         "ENABLE_PREVIEWS = YES",
         # Both: the generated plist supplies the ordinary keys, this file supplies the nested
@@ -516,9 +540,22 @@ def main() -> None:
         "SWIFT_EMIT_LOC_STRINGS = YES",
     ]
 
-    def configuration(config_id: str, name: str, settings: list[str], debug: bool) -> None:
+    def configuration(
+        config_id: str,
+        name: str,
+        settings: list[str],
+        debug: bool,
+        useLocalConfig: bool = False,
+    ) -> None:
         add(f"\t\t{config_id} /* {name} */ = {{")
         add("\t\t\tisa = XCBuildConfiguration;")
+        # Only the targets, not the project: a base configuration set at both levels is
+        # inherited twice, and the target's would win anyway.
+        if useLocalConfig:
+            add(
+                f"\t\t\tbaseConfigurationReference = {file_ref(LOCAL_XCCONFIG)} "
+                f"/* {LOCAL_XCCONFIG} */;"
+            )
         add("\t\t\tbuildSettings = {")
         extra = (
             [
@@ -546,10 +583,10 @@ def main() -> None:
     add("/* Begin XCBuildConfiguration section */")
     configuration(oid("config", "project", "Debug"), "Debug", shared_project_settings, True)
     configuration(oid("config", "project", "Release"), "Release", shared_project_settings, False)
-    configuration(oid("config", "target", "Debug"), "Debug", target_settings, True)
-    configuration(oid("config", "target", "Release"), "Release", target_settings, False)
-    configuration(oid("config", "widget", "Debug"), "Debug", widget_settings, True)
-    configuration(oid("config", "widget", "Release"), "Release", widget_settings, False)
+    configuration(oid("config", "target", "Debug"), "Debug", target_settings, True, True)
+    configuration(oid("config", "target", "Release"), "Release", target_settings, False, True)
+    configuration(oid("config", "widget", "Debug"), "Debug", widget_settings, True, True)
+    configuration(oid("config", "widget", "Release"), "Release", widget_settings, False, True)
     add("/* End XCBuildConfiguration section */")
 
     # --- XCConfigurationList -----------------------------------------------------------
