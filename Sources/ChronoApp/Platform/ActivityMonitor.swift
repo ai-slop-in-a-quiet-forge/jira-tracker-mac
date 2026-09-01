@@ -102,6 +102,9 @@ public final class ActivityMonitor {
                 ? appSensor.runningMeetingApps(matching: settings.meetingAppBundleIDs)
                 : [],
             browserRunning: detecting ? appSensor.browserRunning() : false,
+            screenSharingHosts: detecting && settings.detectViaScreenSharing
+                ? mediaSensor.screenSharingHosts()
+                : [],
             // macOS exposes no supported API for reading a Focus mode, so Chrono relies on its
             // own snooze instead of pretending to know.
             focusModeActive: false

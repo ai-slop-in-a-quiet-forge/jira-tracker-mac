@@ -58,6 +58,10 @@ public struct Settings: Codable, Sendable, Equatable {
     public var detectViaCamera: Bool = true
     /// Weaker signal, off by default: the meeting app merely being frontmost.
     public var detectViaFrontmostApp: Bool = false
+    /// Screen sharing, which catches presenting while muted — the case the microphone and
+    /// camera signals both miss. On by default: it needs no permission and, unlike a live
+    /// microphone, has essentially no innocent explanation.
+    public var detectViaScreenSharing: Bool = true
     public var meetingAppBundleIDs: [String] = MeetingAppCatalog.defaultBundleIDs
     /// Ignore blips shorter than this — a two-second mic activation is a notification sound,
     /// not a meeting.
@@ -261,6 +265,42 @@ public enum MeetingAppCatalog {
         "com.bluejeansnet.Blue",
         "com.microsoft.SkypeForBusiness",
     ]
+
+    /// Processes that exist **only while an app is sharing the screen**, so their presence is a
+    /// meeting signal on its own.
+    ///
+    /// ## Why a catalogue rather than asking the system
+    ///
+    /// macOS has no public API that reports "some other process is capturing the screen".
+    /// Everything that would answer it directly — `ScreenCaptureKit`, `SCShareableContent`,
+    /// `CGDisplayStream` — requires Screen Recording permission, and Chrono's sensors
+    /// deliberately require no permissions at all. Reading the window list is permission-free
+    /// but cannot tell a sharing toolbar from any other window.
+    ///
+    /// What *is* permission-free is the running-process list, so this catalogues the helper
+    /// processes specific apps spawn to do the capturing.
+    ///
+    /// ## Only entries that have been verified belong here
+    ///
+    /// The requirement is strict: the process must exist **only** while sharing. Electron-based
+    /// apps (Teams, Slack) capture in a helper that runs the whole time the app does —
+    /// `com.microsoft.teams2.helper` is present whether or not anything is being shared — so
+    /// they cannot be detected this way and are deliberately absent. Adding one would report a
+    /// meeting for as long as Teams was open.
+    public static let screenSharingHostBundleIDs: Set<String> = [
+        // Zoom's capture host, `zoom.us.app/Contents/Frameworks/CptHost.app`. Launched when
+        // sharing starts and terminated when it stops.
+        "us.zoom.CptHost",
+    ]
+
+    /// The meeting app a sharing host belongs to, so the warning can name something recognisable
+    /// rather than a helper process nobody has heard of.
+    public static func appOwningSharingHost(_ bundleID: String) -> String? {
+        switch bundleID {
+        case "us.zoom.CptHost": return "us.zoom.xos"
+        default: return nil
+        }
+    }
 
     /// Human-friendly name for a bundle id, for use in warnings ("You're in Zoom…").
     public static func displayName(forBundleID id: String) -> String {

@@ -1,6 +1,8 @@
+import AppKit
 import Foundation
 import CoreAudio
 import CoreMediaIO
+import ChronoCore
 
 /// Detects whether the microphone or camera is currently in use by anything on the system.
 ///
@@ -109,5 +111,24 @@ public struct MediaSensor: Sendable {
             device, &address, 0, nil, UInt32(MemoryLayout<UInt32>.size), &used, &running
         ) == noErr else { return false }
         return running != 0
+    }
+}
+
+// MARK: - Screen sharing
+
+public extension MediaSensor {
+
+    /// Sharing-host processes currently running.
+    ///
+    /// Deliberately a process check rather than asking the system whether the screen is being
+    /// captured: every API that answers that directly needs Screen Recording permission, and
+    /// Chrono's sensors require none. See `MeetingAppCatalog.screenSharingHostBundleIDs` for
+    /// what may go in the catalogue and why most meeting apps cannot.
+    ///
+    /// `runningApplications` is permission-free and does include helper bundles, which is what
+    /// makes this work at all.
+    func screenSharingHosts() -> Set<String> {
+        let running = Set(NSWorkspace.shared.runningApplications.compactMap(\.bundleIdentifier))
+        return running.intersection(MeetingAppCatalog.screenSharingHostBundleIDs)
     }
 }
