@@ -39,8 +39,11 @@ final class WebRemoteServer: @unchecked Sendable {
 
     private(set) var port: UInt16?
     private(set) var lastError: String?
-    /// Guards the one-shot retry, so a genuinely broken network cannot loop.
-    private var didFallBackToAssignedPort = false
+    /// The one-shot retry rule, in `ChronoCore` so it can be tested without a socket.
+    private var fallback = PortFallback(preferredPort: 0)
+    /// True once the configured port turned out to be taken and an assigned one was used
+    /// instead. Worth knowing: the phone's saved Home Screen shortcut points at the old port.
+    var didFallBackToAssignedPort: Bool { fallback.hasFallenBack }
 
     /// Cap on request size. The largest legitimate request is a signed command with a note in
     /// it; anything vastly bigger is either a bug or an attack.
@@ -49,9 +52,18 @@ final class WebRemoteServer: @unchecked Sendable {
     // MARK: - Lifecycle
 
     func start(preferredPort: UInt16) throws {
-        let wasFallingBack = didFallBackToAssignedPort
+        // `stop` re-arms the retry, which is right for a deliberate stop but wrong here: a
+        // restart *is* the retry, and re-arming would allow an endless chain of them.
+        let carried = fallback
         stop()
-        didFallBackToAssignedPort = wasFallingBack
+        fallback = carried
+
+        // A different configured port is a new situation and deserves a fresh retry. The
+        // fallback's own restart passes 0, which is how it is told apart from the user changing
+        // the port in Settings — otherwise the retry would re-arm its own guard and loop.
+        if preferredPort != 0, preferredPort != fallback.preferredPort {
+            fallback = PortFallback(preferredPort: preferredPort)
+        }
 
         let parameters = NWParameters.tcp
         parameters.allowLocalEndpointReuse = true
@@ -80,18 +92,16 @@ final class WebRemoteServer: @unchecked Sendable {
                 ChronoLog.remote.info("Web remote listening on port \(listener.port?.rawValue ?? 0)")
             case .failed(let error):
                 ChronoLog.remote.error("Web remote failed: \(error.localizedDescription, privacy: .public)")
-                // Almost always "port already in use". Retry once on an assigned port so the
-                // remote still works, rather than leaving the user with nothing.
-                //
-                // Defensive: not exercised by a test. `allowLocalEndpointReuse` means a second
-                // bind of the same port succeeds rather than colliding, and this machine let a
-                // normal process bind port 80, so no bind failure could be provoked to trigger it.
-                if let self, preferredPort != 0, !self.didFallBackToAssignedPort {
-                    self.didFallBackToAssignedPort = true
+                // Almost always "port already in use". `PortFallback` owns the rule; it is
+                // tested directly, since a real bind failure cannot be provoked here —
+                // `allowLocalEndpointReuse` makes a second bind of the same port succeed.
+                guard let self else { return }
+                switch self.fallback.handleFailure(error.localizedDescription) {
+                case .retryOnAssignedPort:
                     ChronoLog.remote.info("Retrying the web remote on an OS-assigned port")
                     self.restartOnAssignedPort()
-                } else {
-                    self?.lastError = error.localizedDescription
+                case .surface(let message):
+                    self.lastError = message
                 }
             case .cancelled:
                 self?.port = nil
@@ -108,7 +118,7 @@ final class WebRemoteServer: @unchecked Sendable {
         listener?.cancel()
         listener = nil
         port = nil
-        didFallBackToAssignedPort = false
+        fallback.reset()
     }
 
     /// Second attempt after the configured port turned out to be in use.
@@ -118,8 +128,6 @@ final class WebRemoteServer: @unchecked Sendable {
         port = nil
         do {
             try start(preferredPort: 0)
-            // `start` resets the guard, so re-arm it: there must be no third attempt.
-            didFallBackToAssignedPort = true
         } catch {
             lastError = error.localizedDescription
         }
