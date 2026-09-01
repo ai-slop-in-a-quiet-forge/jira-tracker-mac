@@ -121,6 +121,8 @@ struct TimesheetView: View {
                 VStack(alignment: .leading, spacing: Theme.Spacing.section) {
                     UnfiledTimeSection(day: selectedDay)
                     DayEntriesSection(day: selectedDay)
+                    UntrackedMeetingsSection(day: selectedDay)
+
                     WorklogQueueSection(day: selectedDay)
                 }
                 .padding(Theme.Spacing.large)

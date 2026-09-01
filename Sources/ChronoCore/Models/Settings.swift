@@ -73,6 +73,20 @@ public struct Settings: Codable, Sendable, Equatable {
     /// (e.g. a recurring "Ceremonies" ticket). Empty means keep it ad-hoc.
     public var meetingIssueKey: String = ""
 
+    // MARK: - Calendar
+    //
+    // Off by default, like every other sensor — and unlike the others this one needs a
+    // permission, so it stays off until explicitly asked for. Read-only, and only ever the
+    // title and times of events overlapping tracked time.
+
+    public var calendarIntegrationEnabled: Bool = false
+    /// Which calendars to read. Empty means every calendar the account has.
+    public var calendarIdentifiers: [String] = []
+    /// Name meeting time after the calendar event instead of the generic bucket label.
+    public var labelMeetingsFromCalendar: Bool = true
+    /// Offer to backfill meetings that have no tracked time against them.
+    public var offerCalendarBackfill: Bool = true
+
     // MARK: - Nudges
 
     /// "Still on CYM-123?" while a timer runs.

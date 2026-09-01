@@ -745,3 +745,87 @@ struct BackfillButton: View {
         environment.sync.syncIfNeeded()
     }
 }
+
+// MARK: - Meetings you did not track
+
+/// Meetings on the calendar with no tracked time against them, each one click from being added.
+///
+/// Judged by coverage rather than exact match — see `CalendarMatching.untrackedEvents` — so a
+/// meeting you joined two minutes late does not show up here as forgotten.
+struct UntrackedMeetingsSection: View {
+    let day: Date
+    @Environment(AppEnvironment.self) private var environment
+
+    private var events: [CalendarEvent] { environment.untrackedMeetings(for: day) }
+
+    var body: some View {
+        if !events.isEmpty {
+            VStack(alignment: .leading, spacing: Theme.Spacing.small) {
+                SectionHeader(title: "Meetings not tracked", trailing: "\(events.count)")
+                ForEach(events) { event in
+                    UntrackedMeetingRow(event: event)
+                }
+                Text("From your calendar. Adding one records it as meeting time — it does not touch your calendar.")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.tertiary)
+            }
+        }
+    }
+}
+
+struct UntrackedMeetingRow: View {
+    let event: CalendarEvent
+    @Environment(AppEnvironment.self) private var environment
+    @State private var hovering = false
+    @State private var added = false
+
+    /// A meeting still running, or one later today, cannot be added as time already spent.
+    private var isInFuture: Bool { event.start > Date() }
+
+    var body: some View {
+        HStack(spacing: Theme.Spacing.small) {
+            Image(systemName: "calendar")
+                .font(.system(size: 10.5))
+                .foregroundStyle(.secondary)
+
+            Text("\(event.start.formatted(date: .omitted, time: .shortened)) – \(event.end.formatted(date: .omitted, time: .shortened))")
+                .font(.system(size: 10.5, design: .monospaced))
+                .foregroundStyle(.secondary)
+
+            Text(event.title)
+                .font(.system(size: 11.5, weight: .medium))
+                .lineLimit(1)
+
+            Text(event.calendarTitle)
+                .font(.system(size: 10))
+                .foregroundStyle(.tertiary)
+
+            Spacer()
+
+            Text(DurationFormat.humane(event.duration))
+                .font(.system(size: 10.5))
+                .monospacedDigit()
+                .foregroundStyle(.secondary)
+
+            if added {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.green)
+            } else if isInFuture {
+                Text("Not yet")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.tertiary)
+                    .help("This meeting has not started")
+            } else if hovering {
+                Button("Add") {
+                    added = environment.backfill(event: event)
+                }
+                .buttonStyle(QuietButtonStyle(compact: true))
+            }
+        }
+        .padding(.horizontal, Theme.Spacing.small)
+        .padding(.vertical, 4)
+        .background(hovering ? Color.primary.opacity(0.05) : Color.clear, in: RoundedRectangle(cornerRadius: 6))
+        .onHover { hovering = $0 }
+    }
+}

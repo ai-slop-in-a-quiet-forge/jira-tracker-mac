@@ -27,6 +27,9 @@ public final class AppEnvironment {
     /// Issues named by the branch checked out in a watched repository. Empty unless the user has
     /// added directories in Settings.
     let branchSuggestions = BranchSuggestions()
+    /// The local calendar, when the user has switched it on. Reads iCloud, Google, Exchange and
+    /// local calendars identically — whatever macOS already syncs.
+    let calendar = CalendarSensor()
     /// Set by `AppDelegate`, which owns the manager and builds its handlers. Held here so
     /// Settings can re-register a changed shortcut without a relaunch.
     weak var hotkeys: HotkeyManager?
@@ -109,6 +112,7 @@ public final class AppEnvironment {
         activity.start()
         sync.start()
         remote.applySettings(engine.settings)
+        refreshCalendar()
         startTicking()
 
         Task { await connectToJira() }
@@ -264,9 +268,80 @@ public final class AppEnvironment {
     }
 
     /// Switches to the meeting bucket, remembering what to come back to.
+    ///
+    /// When the calendar knows what the meeting *is*, the time is named after it — "Sprint
+    /// review" rather than a generic "Meeting". That is the whole point of #14: Chrono already
+    /// knew you were in a call, just not which one.
     public func switchToMeeting(source: SegmentSource = .automatic) {
         targetBeforeMeeting = engine.activeTarget
+
+        if engine.settings.calendarIntegrationEnabled,
+           engine.settings.labelMeetingsFromCalendar,
+           let event = currentCalendarEvent() {
+            engine.start(
+                .adhoc(AdhocRef.forCalendarEvent(event, category: engine.settings.meetingBucket)),
+                source: source
+            )
+            return
+        }
         start(adhoc: engine.settings.meetingBucket, source: source)
+    }
+
+    /// The calendar event covering now, if the calendar is switched on and says there is one.
+    func currentCalendarEvent() -> CalendarEvent? {
+        guard engine.settings.calendarIntegrationEnabled, calendar.access.isUsable else { return nil }
+        return CalendarMatching.event(covering: Date(), in: calendar.events)
+    }
+
+    /// Meetings today with no tracked time against them.
+    func untrackedMeetings(for day: Date) -> [CalendarEvent] {
+        guard engine.settings.calendarIntegrationEnabled,
+              engine.settings.offerCalendarBackfill,
+              calendar.access.isUsable
+        else { return [] }
+
+        let calendarOfRecord = Calendar.current
+        let tracked = engine.state.allSegments()
+            .filter { calendarOfRecord.isDate($0.start, inSameDayAs: day) }
+            .map { (start: $0.start, end: $0.end ?? Date()) }
+        let events = calendar.events.filter { calendarOfRecord.isDate($0.start, inSameDayAs: day) }
+        return CalendarMatching.untrackedEvents(events, trackedRanges: tracked)
+    }
+
+    /// Records a meeting that was never tracked, named after the event.
+    @discardableResult
+    func backfill(event: CalendarEvent) -> Bool {
+        // Never past now: a meeting still in progress would otherwise be logged as already
+        // finished, and one later today as time already spent.
+        let end = min(event.end, Date())
+        guard end > event.start else {
+            show(.init(kind: .warning, message: "\(event.title) hasn't happened yet."))
+            return false
+        }
+        let created = engine.backfill(
+            target: .adhoc(AdhocRef.forCalendarEvent(event, category: engine.settings.meetingBucket)),
+            start: event.start,
+            end: end
+        )
+        guard created != nil else { return false }
+        show(.init(kind: .success, message: "Added \(DurationFormat.humane(end.timeIntervalSince(event.start))) for \(event.title)."))
+        return true
+    }
+
+    /// Reloads today's events. Cheap, and driven by the panel opening rather than a timer.
+    func refreshCalendar() {
+        guard engine.settings.calendarIntegrationEnabled else {
+            return
+        }
+        calendar.refreshAccessStatus()
+        guard calendar.access.isUsable else { return }
+        let dayStart = Calendar.current.startOfDay(for: Date())
+        let dayEnd = dayStart.addingTimeInterval(24 * 3600)
+        calendar.refreshEvents(
+            from: dayStart,
+            to: dayEnd,
+            identifiers: engine.settings.calendarIdentifiers
+        )
     }
 
     /// Returns to whatever was being tracked before a meeting switch.
