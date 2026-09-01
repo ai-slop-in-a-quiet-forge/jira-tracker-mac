@@ -448,6 +448,55 @@ public final class TrackingEngine {
         persist()
     }
 
+    /// The window `id`'s times may be moved within, bounded by the entries either side.
+    ///
+    /// The running segment counts as a neighbour even though it does not live in `segments`: its
+    /// start is a hard ceiling, or an edit could be made to overlap time that is still accruing.
+    public func bounds(forSegment id: UUID) -> SegmentBounds? {
+        let ordered = state.segments.sorted { $0.start < $1.start }
+        guard let index = ordered.firstIndex(where: { $0.id == id }) else { return nil }
+
+        let previous = index > 0 ? ordered[index - 1] : nil
+        var latest = index + 1 < ordered.count ? ordered[index + 1].start : nil
+        if let runningSince = state.runningSince {
+            latest = latest.map { min($0, runningSince) } ?? runningSince
+        }
+
+        return SegmentBounds(
+            // A previous entry with no end should be impossible in `segments`, but falling back
+            // to its start is the safe reading rather than treating it as unbounded.
+            earliestStart: previous.map { $0.end ?? $0.start },
+            latestEnd: latest
+        )
+    }
+
+    /// Corrects a closed segment's start and end, refusing anything that would overlap its
+    /// neighbours.
+    ///
+    /// Separate from `updateSegment` because the two want opposite behaviour. `updateSegment`
+    /// clamps quietly, which suits a programmatic caller; a person editing a time wants to be
+    /// told their correction was not applied and why, not to have it silently altered into
+    /// something they did not ask for.
+    @discardableResult
+    public func editSegmentTimes(id: UUID, start: Date, end: Date) -> SegmentEditOutcome {
+        guard state.segments.contains(where: { $0.id == id }) else {
+            // An open segment is addressable but not editable this way.
+            return .rejected(state.openSegment()?.id == id ? .segmentIsOpen : .notFound)
+        }
+        guard end > start else { return .rejected(.endNotAfterStart) }
+        guard let bounds = bounds(forSegment: id) else { return .rejected(.notFound) }
+
+        if let earliest = bounds.earliestStart, start < earliest {
+            return .rejected(.overlapsPrevious(earliestAllowedStart: earliest))
+        }
+        if let latest = bounds.latestEnd, end > latest {
+            return .rejected(.overlapsNext(latestAllowedEnd: latest))
+        }
+
+        updateSegment(id: id, start: start, end: end)
+        return .applied
+    }
+
     // MARK: - Crash recovery
 
     /// Called at launch: if the persisted state says a timer was running, the app did not exit

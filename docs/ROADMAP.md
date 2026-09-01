@@ -65,12 +65,12 @@ segment.
 
 *Labels: `enhancement`, `area: jira`*
 
-### Timesheet cannot edit times inline — **S**
-`TrackingEngine.updateSegment` supports changing start, end and note, and is tested. The
-timesheet only exposes delete and re-target. Wiring up an inline editor is small and would
-remove the main reason to leave the app.
+### ~~Timesheet cannot edit times inline~~ — done
+Clicking an entry's times in the timesheet opens a bounded editor. `editSegmentTimes` refuses
+anything that would overlap a neighbour or the running timer, and says which boundary was hit.
 
-*Labels: `enhancement`, `area: ui`, `good first issue`*
+(The earlier note here claimed `updateSegment` was tested. It was not — it had no callers and no
+tests at all. It still exists for programmatic use, where its quiet clamping is appropriate.)
 
 ### Chrono cannot tell you an update exists — **S**
 Mostly solved: `brew upgrade --cask chrono` updates a Homebrew install, and the tap re-points
