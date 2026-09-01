@@ -14,7 +14,10 @@ public struct DayRollup: Sendable, Equatable {
     public let firstActivity: Date?
     public let lastActivity: Date?
     public let segmentCount: Int
-    /// Number of distinct targets touched — a decent proxy for how fragmented the day was.
+    /// How many times the target *changed*, in chronological order — so five segments on one
+    /// issue count as none, and five different issues count as four. A decent proxy for how
+    /// fragmented the day was. (Not the number of distinct targets, which an earlier version of
+    /// this comment claimed; `totals.count` is that.)
     public let contextSwitches: Int
 
     public var totalSeconds: TimeInterval { workSeconds + breakSeconds }

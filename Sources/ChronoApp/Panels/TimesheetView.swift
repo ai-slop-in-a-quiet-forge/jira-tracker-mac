@@ -119,6 +119,7 @@ struct TimesheetView: View {
             Divider()
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Spacing.section) {
+                    WeekReviewSection(day: selectedDay)
                     UnfiledTimeSection(day: selectedDay)
                     DayEntriesSection(day: selectedDay)
                     UntrackedMeetingsSection(day: selectedDay)
