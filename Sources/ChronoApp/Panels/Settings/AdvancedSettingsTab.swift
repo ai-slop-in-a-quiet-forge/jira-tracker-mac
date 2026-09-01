@@ -52,10 +52,13 @@ struct AdvancedSettingsTab: View {
                 footnote: "CSV with ISO 8601 timestamps and RFC 4180 quoting, so a summary containing a comma cannot corrupt the file."
             ) {
                 HStack(spacing: Theme.Spacing.small) {
-                    Button("Export every entry…") { export(detailed: true) }
+                    Button("Export every entry…") { export(.segments) }
                         .buttonStyle(FilledButtonStyle(compact: true))
-                    Button("Export daily totals…") { export(detailed: false) }
+                    Button("Export daily totals…") { export(.dailyTotals) }
                         .buttonStyle(QuietButtonStyle(compact: true))
+                    Button("Export for Tempo…") { export(.tempo) }
+                        .buttonStyle(QuietButtonStyle(compact: true))
+                        .help("One row per issue per day, in the columns Tempo's worklog importer reads")
                 }
                 if let exportMessage {
                     Text(exportMessage)
@@ -96,23 +99,58 @@ struct AdvancedSettingsTab: View {
         }
     }
 
-    private func export(detailed: Bool) {
+    private enum ExportKind {
+        case segments, dailyTotals, tempo
+
+        var filenameStem: String {
+            switch self {
+            case .segments: return "chrono-entries"
+            case .dailyTotals: return "chrono-daily"
+            case .tempo: return "chrono-tempo"
+            }
+        }
+    }
+
+    private func export(_ kind: ExportKind) {
         let panel = NSSavePanel()
         panel.allowedContentTypes = [.commaSeparatedText]
         let stamp = Export.filenameDateFormatter.string(from: Date())
-        panel.nameFieldStringValue = detailed ? "chrono-entries-\(stamp).csv" : "chrono-daily-\(stamp).csv"
+        panel.nameFieldStringValue = "\(kind.filenameStem)-\(stamp).csv"
         panel.canCreateDirectories = true
 
         guard panel.runModal() == .OK, let url = panel.url else { return }
 
         let segments = engine.state.allSegments()
-        let csv = detailed
-            ? Export.segmentsCSV(segments, drafts: engine.state.drafts)
-            : Export.dailyTotalsCSV(segments, asOf: Date())
+        let csv: String
+        // Anything the export could not represent, said plainly rather than left to be noticed
+        // in the imported timesheet.
+        var caveat: String?
+
+        switch kind {
+        case .segments:
+            csv = Export.segmentsCSV(segments, drafts: engine.state.drafts)
+        case .dailyTotals:
+            csv = Export.dailyTotalsCSV(segments, asOf: Date())
+        case .tempo:
+            let result = TempoExport.csv(
+                segments,
+                workerAccountID: engine.state.jiraAccountID,
+                asOf: Date()
+            )
+            csv = result.csv
+            if result.hasSkipped {
+                let what = result.skippedLabels.joined(separator: ", ")
+                caveat = " \(DurationFormat.humane(result.skippedSeconds)) of time without an issue "
+                    + "(\(what)) was left out — Tempo logs against a Jira issue."
+            } else if engine.state.jiraAccountID == nil {
+                caveat = " The Worker column is empty because Chrono has not connected to Jira yet;"
+                    + " Tempo will reject the file until it is filled in."
+            }
+        }
 
         do {
             try Data(csv.utf8).write(to: url, options: .atomic)
-            exportMessage = "Saved to \(url.lastPathComponent)."
+            exportMessage = "Saved to \(url.lastPathComponent)." + (caveat ?? "")
         } catch {
             exportMessage = "Could not save: \(error.localizedDescription)"
         }
