@@ -131,14 +131,26 @@ final class StatusItemController {
             return ""
 
         case .running(let target, _):
-            let elapsed = settings.showSecondsInMenuBar
-                ? DurationFormat.clock(engine.currentSegmentElapsed)
-                : DurationFormat.compact(engine.currentSegmentElapsed)
+            let elapsed = MenuBarTime.title(
+                for: settings.menuBarTime,
+                session: engine.currentSegmentElapsed,
+                dayTotal: engine.todayRollup.workSeconds,
+                showSeconds: settings.showSecondsInMenuBar
+            )
             guard settings.menuBarShowsLabel else { return elapsed }
             return "\(trim(target.shortLabel, to: settings.menuBarLabelMaxLength)) \(elapsed)"
 
         case .paused(let target, _):
-            let total = DurationFormat.compact(engine.activeTargetTodayElapsed)
+            // Paused shows time on the target today rather than the frozen segment, so the
+            // number does not appear to reset every time you pause. Seconds are suppressed:
+            // nothing is counting, and a stopped clock showing seconds invites a second look
+            // to check whether it is moving.
+            let total = MenuBarTime.title(
+                for: settings.menuBarTime,
+                session: engine.activeTargetTodayElapsed,
+                dayTotal: engine.todayRollup.workSeconds,
+                showSeconds: false
+            )
             guard settings.menuBarShowsLabel else { return "|| \(total)" }
             return "\(trim(target.shortLabel, to: settings.menuBarLabelMaxLength)) || \(total)"
         }
