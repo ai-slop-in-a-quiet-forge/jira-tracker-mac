@@ -27,15 +27,24 @@ struct PairingView: View {
                 qrCode(for: url)
 
                 VStack(spacing: 6) {
-                    Text(url.host.map { "\($0):\(payload.port)" } ?? "")
-                        .font(.system(size: 12, weight: .medium, design: .monospaced))
-                    Text("Then tap Share ▸ Add to Home Screen, and it behaves like an app.")
-                        .font(.system(size: 10.5))
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
+                    if let host = payload.host, let port = payload.port {
+                        Text("\(host):\(port)")
+                            .font(.system(size: 12, weight: .medium, design: .monospaced))
+                        Text("Then tap Share ▸ Add to Home Screen, and it behaves like an app.")
+                            .font(.system(size: 10.5))
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                    } else {
+                        Text("Bluetooth only")
+                            .font(.system(size: 12, weight: .medium, design: .monospaced))
+                        Text("Scan this from the Chrono Remote app on your iPhone — there is no web page to open.")
+                            .font(.system(size: 10.5))
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
                 }
 
-                steps
+                steps(reachesWebRemote: payload.reachesWebRemote)
                 Spacer()
                 footer(url: url)
             } else {
@@ -69,11 +78,20 @@ struct PairingView: View {
         }
     }
 
-    private var steps: some View {
+    /// The instructions differ by transport, and getting them wrong is worse than showing none:
+    /// telling someone to join the same Wi-Fi when the code only pairs over Bluetooth sends
+    /// them looking for a fault that is not there.
+    private func steps(reachesWebRemote: Bool) -> some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.small) {
-            step(1, "Make sure your phone is on the same Wi-Fi as this Mac.")
-            step(2, "Scan the code and open the link.")
-            step(3, "Add it to your Home Screen so it opens full-screen.")
+            if reachesWebRemote {
+                step(1, "Make sure your phone is on the same Wi-Fi as this Mac.")
+                step(2, "Scan the code and open the link.")
+                step(3, "Add it to your Home Screen so it opens full-screen.")
+            } else {
+                step(1, "Open the Chrono Remote app on your iPhone.")
+                step(2, "Tap “Scan the code” and point it at this.")
+                step(3, "Keep the phone within Bluetooth range — no Wi-Fi needed.")
+            }
         }
         .padding(Theme.Spacing.medium)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -119,10 +137,10 @@ struct PairingView: View {
         VStack(spacing: Theme.Spacing.medium) {
             EmptyStateView(
                 systemImage: "wifi.exclamationmark",
-                title: "The web remote is not running",
+                title: "No phone remote is running",
                 message: environment.engine.settings.webRemoteEnabled
-                    ? (environment.remote.webError ?? "Chrono could not find a network address for this Mac. Check that Wi-Fi or Ethernet is connected.")
-                    : "Turn on the phone web remote in Settings ▸ Phone first."
+                    ? (environment.remote.webError ?? "Chrono could not find a network address for this Mac. Check that Wi-Fi or Ethernet is connected, or turn on Bluetooth instead — that pairs without a network.")
+                    : "Turn on the web remote or Bluetooth in Settings ▸ Phone first. Either one is enough to pair."
             )
             Button("Open Settings") { WindowManager.shared.showSettings(environment: environment) }
                 .buttonStyle(FilledButtonStyle(compact: true))

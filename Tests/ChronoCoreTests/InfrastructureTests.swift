@@ -250,6 +250,30 @@ struct RemoteAuthTests {
 
         #expect(url.query == nil, "a query string would be logged by any proxy in between")
         #expect(url.fragment?.contains("s=s3cr3t") == true, "fragments are never sent to the server")
+        #expect(payload.reachesWebRemote)
+    }
+
+    @Test("A Bluetooth-only pairing code carries the secret with no network address")
+    func pairingURLWorksWithoutTheWebRemote() throws {
+        // The iOS app reads nothing but the fragment, so pairing must not require a LAN
+        // endpoint — otherwise the transport that needs no Wi-Fi could not be set up.
+        let payload = PairingPayload(secret: "s3cr3t", deviceName: "Mac")
+        let url = try #require(payload.pairingURL())
+
+        #expect(payload.reachesWebRemote == false)
+        #expect(url.scheme == "chrono", "there is no web page to point a browser at")
+        #expect(url.query == nil)
+        #expect(url.fragment?.contains("s=s3cr3t") == true)
+    }
+
+    @Test("Both pairing code shapes expose the same fragment the phone parses")
+    func pairingURLFragmentIsIdenticalAcrossTransports() throws {
+        let overWeb = PairingPayload(host: "192.168.1.20", port: 8765, secret: "abc", deviceName: "Mac")
+        let overBluetooth = PairingPayload(secret: "abc", deviceName: "Mac")
+
+        let webFragment = try #require(overWeb.pairingURL()?.fragment)
+        let bluetoothFragment = try #require(overBluetooth.pairingURL()?.fragment)
+        #expect(webFragment == bluetoothFragment)
     }
 
     @Test("Every command round trips through its compact encoding")

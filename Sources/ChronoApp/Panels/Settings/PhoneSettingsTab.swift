@@ -43,16 +43,10 @@ struct PhoneSettingsTab: View {
                         value: remote.webPort.map { "Listening on port \($0)" } ?? (remote.webError ?? "Starting…"),
                         healthy: remote.webPort != nil
                     )
-                    if let payload = remote.pairingPayload() {
-                        statusRow(label: "Address", value: "\(payload.host):\(payload.port)", healthy: true)
+                    if let payload = remote.pairingPayload(), let host = payload.host, let port = payload.port {
+                        statusRow(label: "Address", value: "\(host):\(port)", healthy: true)
                     }
                     WebRemotePortField()
-
-                    Button("Show the pairing code…") {
-                        WindowManager.shared.showPairing(environment: environment)
-                    }
-                    .buttonStyle(FilledButtonStyle(compact: true))
-                    .disabled(remote.webPort == nil)
                 }
             }
 
@@ -77,6 +71,20 @@ struct PhoneSettingsTab: View {
                         healthy: remote.bluetoothStatus.isHealthy
                     )
                 }
+            }
+
+            SettingsGroup(
+                "Pairing",
+                footnote: "One code pairs a phone over either transport — it carries the shared secret, and the phone keeps nothing else. Turn on whichever transport you want above, then show the code."
+            ) {
+                Button("Show the pairing code…") {
+                    WindowManager.shared.showPairing(environment: environment)
+                }
+                .buttonStyle(FilledButtonStyle(compact: true))
+                .disabled(!remote.isAnyTransportActive)
+                .help(remote.isAnyTransportActive
+                    ? "Shows the QR code that pairs a phone with this Mac"
+                    : "Turn on the web remote or Bluetooth first")
             }
 
             SettingsGroup(

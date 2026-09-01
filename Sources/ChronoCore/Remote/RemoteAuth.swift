@@ -217,15 +217,26 @@ public actor RemoteCommandVerifier {
 }
 
 /// The payload encoded into the pairing QR code.
+///
+/// `host` and `port` describe the LAN web remote, and are absent when only Bluetooth is
+/// advertising. They have to be optional: the iOS app authenticates with nothing but the
+/// secret and throws the address away, so requiring a LAN endpoint to produce a pairing code
+/// would make the one transport that advertises "no Wi-Fi needed" impossible to set up.
 public struct PairingPayload: Codable, Sendable, Equatable {
-    /// Everything the phone needs to reach the Mac over the LAN.
-    public var host: String
-    public var port: Int
+    /// Where the phone reaches this Mac over the LAN. Nil for a Bluetooth-only pairing.
+    public var host: String?
+    public var port: Int?
     public var secret: String
     public var deviceName: String
     public var version: Int
 
-    public init(host: String, port: Int, secret: String, deviceName: String, version: Int = ChronoRemote.protocolVersion) {
+    public init(
+        host: String? = nil,
+        port: Int? = nil,
+        secret: String,
+        deviceName: String,
+        version: Int = ChronoRemote.protocolVersion
+    ) {
         self.host = host
         self.port = port
         self.secret = secret
@@ -233,17 +244,29 @@ public struct PairingPayload: Codable, Sendable, Equatable {
         self.version = version
     }
 
+    /// Whether this code also opens the web remote when scanned by a plain camera app.
+    public var reachesWebRemote: Bool { host != nil && port != nil }
+
     /// The URL put in the QR code.
     ///
     /// The secret lives in the URL **fragment**, which browsers never send to the server. So
     /// even though the LAN remote is plain HTTP, the secret itself is not transmitted — it is
     /// read by the page's own JavaScript and kept in local storage.
+    ///
+    /// With no web remote running there is no address worth visiting, so the code is emitted
+    /// under Chrono's own scheme instead. The fragment is identical either way, which is all
+    /// the iOS app reads.
     public func pairingURL() -> URL? {
         var components = URLComponents()
-        components.scheme = "http"
-        components.host = host
-        components.port = port
-        components.path = "/"
+        if let host, let port {
+            components.scheme = "http"
+            components.host = host
+            components.port = port
+            components.path = "/"
+        } else {
+            components.scheme = "chrono"
+            components.host = "pair"
+        }
         components.fragment = "s=\(secret)&n=\(deviceName.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? "Mac")&v=\(version)"
         return components.url
     }

@@ -127,11 +127,18 @@ final class RemoteCoordinator {
 
     // MARK: - Pairing
 
+    /// The pairing code for whichever transports are running.
+    ///
+    /// Deliberately not gated on the web remote. The phone stores only the secret, so a
+    /// Bluetooth-only setup is pairable with no LAN address at all — and it has to be, or the
+    /// transport sold as working "when you leave the building" could never be set up.
     func pairingPayload() -> PairingPayload? {
-        guard let port = webPort, let host = NetworkInterface.bestLocalAddress() else { return nil }
+        guard isAnyTransportActive else { return nil }
+        // Only advertise an address when the web remote is actually reachable at one.
+        let host = webPort == nil ? nil : NetworkInterface.bestLocalAddress()
         return PairingPayload(
             host: host,
-            port: Int(port),
+            port: host == nil ? nil : webPort.map(Int.init),
             secret: keychain.remotePairingSecret(),
             deviceName: Self.deviceName
         )
