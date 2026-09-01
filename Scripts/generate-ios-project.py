@@ -20,6 +20,27 @@ BUNDLE_ID = "in.chrono.remote"
 DEPLOYMENT_TARGET = "17.0"
 SWIFT_VERSION = "5.0"
 
+# The Apple Developer team to sign with, which is per-person rather than per-project: a team id
+# committed here would be one contributor's identity imposed on everyone else's build. Set it
+# once per machine and regenerate:
+#
+#     export CHRONO_DEVELOPMENT_TEAM=XXXXXXXXXX
+#     python3 Scripts/generate-ios-project.py
+#
+# Left unset, the project builds for the simulator exactly as before; only device builds and
+# archives need a team. Without this the setting has to be re-added by hand in Xcode after every
+# regeneration, and quietly disappears the next time someone adds a source file.
+DEVELOPMENT_TEAM = os.environ.get("CHRONO_DEVELOPMENT_TEAM", "").strip()
+
+
+def signing_settings() -> list[str]:
+    """`CODE_SIGN_STYLE` plus the team, when one is configured."""
+    settings = ["CODE_SIGN_STYLE = Automatic"]
+    if DEVELOPMENT_TEAM:
+        settings.append(f"DEVELOPMENT_TEAM = {DEVELOPMENT_TEAM}")
+    return settings
+
+
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 PROJECT_DIR = ROOT / "ios" / PROJECT_NAME
 XCODEPROJ = PROJECT_DIR / f"{PROJECT_NAME}.xcodeproj"
@@ -454,7 +475,7 @@ def main() -> None:
     target_settings = [
         "ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon",
         "ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = \"\"",
-        "CODE_SIGN_STYLE = Automatic",
+        *signing_settings(),
         "CURRENT_PROJECT_VERSION = 1",
         "ENABLE_PREVIEWS = YES",
         # The Info.plist is generated from these build settings, so there is no plist file to
@@ -476,7 +497,7 @@ def main() -> None:
     ]
 
     widget_settings = [
-        "CODE_SIGN_STYLE = Automatic",
+        *signing_settings(),
         "CURRENT_PROJECT_VERSION = 1",
         "ENABLE_PREVIEWS = YES",
         # Both: the generated plist supplies the ordinary keys, this file supplies the nested

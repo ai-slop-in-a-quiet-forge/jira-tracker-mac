@@ -40,6 +40,21 @@ open ios/ChronoRemote/ChronoRemote.xcodeproj
 3. Press **Run**.
 4. On the iPhone: Settings ▸ General ▸ VPN & Device Management ▸ trust your developer certificate.
 
+Always run the **ChronoRemote** scheme, never `ChronoRemoteWidget`. The extension holds a Live
+Activity and nothing else, so it publishes no widget for the Home Screen and there is nothing to
+launch on its own — running it fails with `Failed to get descriptors for extensionBundleID`. The
+`.appex` is embedded in the app and the system loads it when `Activity.request` is called; to
+debug it, run the app and use *Debug ▸ Attach to Process*.
+
+The project is generated (`Scripts/generate-ios-project.py`), so a **Team** set in Xcode is
+overwritten the next time anyone regenerates it. To make it stick, set it once per machine
+instead — the team id stays out of the repository:
+
+```bash
+export CHRONO_DEVELOPMENT_TEAM=XXXXXXXXXX   # Xcode ▸ Settings ▸ Accounts shows yours
+python3 Scripts/generate-ios-project.py
+```
+
 First build needs iOS platform support installed in Xcode (Settings ▸ Components). Without it
 the Swift compiles fine but the app-icon step fails.
 
