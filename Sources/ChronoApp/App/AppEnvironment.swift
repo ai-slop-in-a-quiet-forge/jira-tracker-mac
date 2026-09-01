@@ -24,6 +24,9 @@ public final class AppEnvironment {
     public let sync: SyncCoordinator
     /// Optional, off by default. See `RemoteCoordinator`.
     let remote: RemoteCoordinator
+    /// Set by `AppDelegate`, which owns the manager and builds its handlers. Held here so
+    /// Settings can re-register a changed shortcut without a relaunch.
+    weak var hotkeys: HotkeyManager?
 
     // MARK: - UI state
 
@@ -31,6 +34,9 @@ public final class AppEnvironment {
     public private(set) var pendingIntervention: Intervention?
     /// Transient banner text shown at the top of the panel ("Logged 2h 15m to CYM-12").
     public private(set) var flash: Flash?
+    /// Shortcuts the window server refused, usually because another app owns the combination.
+    /// Mirrored from `HotkeyManager` because that type cannot be `@Observable`.
+    private(set) var unavailableHotkeys: Set<HotkeyAction> = []
     /// True while the first-run flow has not been completed.
     public var needsOnboarding: Bool {
         connection.state == .unconfigured && engine.state.segments.isEmpty
@@ -458,6 +464,20 @@ public final class AppEnvironment {
 
     public func mutateSettings(_ transform: (inout Settings) -> Void) {
         engine.mutateSettings(transform)
+    }
+
+    /// Changes a shortcut and re-registers straight away.
+    ///
+    /// Persisting without re-registering would leave Settings showing one combination while the
+    /// window server still answers the old one — the shortcut would appear simply not to work
+    /// until the next launch.
+    func updateHotkeys(_ transform: (inout HotkeySet) -> Void) {
+        mutateSettings { transform(&$0.hotkeys) }
+        hotkeys?.reapply(engine.settings.hotkeys)
+    }
+
+    func recordUnavailableHotkeys(_ actions: Set<HotkeyAction>) {
+        unavailableHotkeys = actions
     }
 }
 
