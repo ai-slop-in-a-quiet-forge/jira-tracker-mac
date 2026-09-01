@@ -21,6 +21,9 @@ public struct ActivitySnapshot: Sendable, Equatable {
     public var runningMeetingApps: Set<String>
     /// A browser is running, which makes an in-browser meeting plausible.
     public var browserRunning: Bool
+    /// Sharing-host processes currently running — see `MeetingAppCatalog.screenSharingHostBundleIDs`.
+    /// Non-empty means something is capturing the screen right now.
+    public var screenSharingHosts: Set<String>
     /// True while the user has Do Not Disturb / a Focus mode on, which Chrono treats as
     /// "don't interrupt me" for its own nudges too.
     public var focusModeActive: Bool
@@ -36,6 +39,7 @@ public struct ActivitySnapshot: Sendable, Equatable {
         frontmostAppName: String? = nil,
         runningMeetingApps: Set<String> = [],
         browserRunning: Bool = false,
+        screenSharingHosts: Set<String> = [],
         focusModeActive: Bool = false
     ) {
         self.timestamp = timestamp
@@ -48,6 +52,7 @@ public struct ActivitySnapshot: Sendable, Equatable {
         self.frontmostAppName = frontmostAppName
         self.runningMeetingApps = runningMeetingApps
         self.browserRunning = browserRunning
+        self.screenSharingHosts = screenSharingHosts
         self.focusModeActive = focusModeActive
     }
 
@@ -62,7 +67,8 @@ public struct MeetingSignal: Sendable, Equatable {
         case weak = 1
         /// Audio or video capture is live and a meeting app is running.
         case strong = 2
-        /// Both microphone and camera are live — you are unambiguously on a call.
+        /// Both microphone and camera are live, or the screen is being shared — you are
+        /// unambiguously presenting to someone.
         case certain = 3
 
         public static func < (lhs: Confidence, rhs: Confidence) -> Bool { lhs.rawValue < rhs.rawValue }
@@ -86,12 +92,18 @@ public extension ActivitySnapshot {
     /// The rules are tuned to avoid false positives, because an app that cries "are you in a
     /// meeting?" while you are listening to music gets muted within a day:
     ///
+    /// * the screen is being shared → certain, whatever else is true;
     /// * mic **and** camera live → certain, whatever is running;
     /// * mic or camera live **and** a known meeting app (or a browser) is running → strong;
     /// * a known meeting app merely frontmost → weak, and only if the user opted in.
     ///
     /// Microphone activity on its own is explicitly *not* enough: dictation, Voice Memos and
     /// a dozen menu bar utilities hold the input device open.
+    ///
+    /// Screen sharing, by contrast, needs no corroboration. The catalogued host processes exist
+    /// only while a capture is running, and unlike an open microphone there is no innocent
+    /// explanation for one. It is also the only signal that catches presenting while muted with
+    /// the camera off — which is exactly the case the other two miss.
     func meetingSignal(settings: Settings) -> MeetingSignal? {
         guard settings.meetingDetectionEnabled, !screenLocked, !systemAsleep else { return nil }
 
@@ -112,6 +124,16 @@ public extension ActivitySnapshot {
             return frontmostAppName ?? "a call"
         }()
 
+        if settings.detectViaScreenSharing, let host = screenSharingHosts.sorted().first {
+            // Prefer naming the app that owns the helper: "Zoom" means something to a person,
+            // "us.zoom.CptHost" does not.
+            let owner = MeetingAppCatalog.appOwningSharingHost(host)
+            return MeetingSignal(
+                confidence: .certain,
+                appName: owner.map { MeetingAppCatalog.displayName(forBundleID: $0) } ?? namedApp,
+                reason: "you are sharing your screen"
+            )
+        }
         if micLive && cameraLive {
             return MeetingSignal(
                 confidence: .certain,
