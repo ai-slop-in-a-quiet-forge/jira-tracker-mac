@@ -99,16 +99,14 @@ and renew it. Until then, building from source avoids all of it.
 
 ## Features worth building
 
-### Suggest an issue from the current git branch — **S**
-A branch called `CYM-1234-fix-parser` should make Chrono offer `CYM-1234` in the panel. Small
-feature, disproportionately nice for developers. Needs a way to know which repository you are
-looking at — frontmost editor window title, or a configured list of directories.
+### ~~Suggest an issue from the current git branch~~ — done
+Add folders under Settings ▸ Jira ▸ *Suggest from your git branch* and the panel offers the issue
+named by each checked-out branch. A configured list, not window-title sniffing: the latter guesses
+at a convention every editor implements differently.
 
-*Labels: `enhancement`, `good first issue`*
-
-### Tempo CSV export — **S**
-`Export` produces a sensible generic CSV. Teams using Tempo need a specific column layout to
-import. Additive and self-contained.
+### ~~Tempo CSV export~~ — done
+`TempoExport` writes the columns Tempo's worklog importer reads, one row per issue per day, and
+reports the ad-hoc time it could not include.
 
 *Labels: `enhancement`, `area: jira`, `good first issue`*
 

@@ -118,6 +118,16 @@ public struct Settings: Codable, Sendable, Equatable {
     /// Cap on menu bar label length, so a long issue summary cannot eat the whole bar.
     public var menuBarLabelMaxLength: Int = 18
     public var playSoundOnStateChange: Bool = false
+
+    // MARK: - Git branch suggestions
+
+    /// Directories Chrono checks for a checked-out branch naming an issue.
+    ///
+    /// An explicit list rather than anything cleverer: the alternatives are guessing from the
+    /// frontmost window title, which is fragile and differs per editor, or watching the whole
+    /// filesystem, which is a wildly disproportionate thing for a time tracker to do. Empty by
+    /// default, so the feature costs nothing until asked for.
+    public var watchedRepositoryPaths: [String] = []
     public var hotkeys: HotkeySet = .defaults
 
     public init() {}

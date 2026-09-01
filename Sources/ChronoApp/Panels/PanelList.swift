@@ -22,6 +22,7 @@ struct PanelList: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: Theme.Spacing.medium) {
                     if query.isEmpty {
+                        branchSection
                         pinnedSection
                         recentSection
                         filterSection
@@ -126,6 +127,23 @@ struct PanelList: View {
                 SectionHeader(title: "Results", trailing: "\(environment.issues.results.count)")
                 ForEach(environment.issues.results) { issue in
                     IssueRow(issue: issue) { query = "" }
+                }
+            }
+        }
+    }
+
+    /// Issues named by the branch you have checked out.
+    ///
+    /// Placed above Pinned and Recent because when it applies it is almost always the right
+    /// answer — you are on that branch because you are working on that issue.
+    @ViewBuilder
+    private var branchSection: some View {
+        let suggestions = environment.branchSuggestions.suggestions
+        if !suggestions.isEmpty {
+            VStack(alignment: .leading, spacing: Theme.Spacing.small) {
+                SectionHeader(title: "On your branch")
+                ForEach(suggestions) { suggestion in
+                    BranchSuggestionRow(suggestion: suggestion)
                 }
             }
         }
@@ -343,4 +361,55 @@ extension Color {
     /// SwiftUI has no direct equivalent of `tertiaryLabelColor`, and `.tertiary` is a
     /// ShapeStyle rather than a Color, so bridge it once here.
     static let tertiaryLabel = Color(nsColor: .tertiaryLabelColor)
+}
+
+/// One issue offered because a watched repository has it checked out.
+///
+/// Shows the repository and branch rather than only the key: an unexpected suggestion should
+/// explain itself, and with more than one repository the key alone does not say where it came
+/// from.
+struct BranchSuggestionRow: View {
+    let suggestion: BranchSuggestions.Suggestion
+    @Environment(AppEnvironment.self) private var environment
+    @State private var hovering = false
+
+    var body: some View {
+        Button {
+            // Tracked immediately by key; Jira fills in the summary when it answers, exactly as
+            // pressing Return on a typed key already does.
+            environment.start(issue: IssueRef(key: suggestion.key))
+        } label: {
+            HStack(spacing: Theme.Spacing.small) {
+                Image(systemName: "arrow.triangle.branch")
+                    .font(.system(size: 10.5))
+                    .foregroundStyle(.secondary)
+
+                Text(suggestion.key)
+                    .font(.system(size: 12, weight: .semibold))
+
+                Text("\(suggestion.repository) · \(suggestion.branch)")
+                    .font(.system(size: 10.5))
+                    .foregroundStyle(.tertiary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+
+                Spacer()
+
+                if hovering {
+                    Text("Start")
+                        .font(.system(size: 10.5, weight: .medium))
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(.horizontal, Theme.Spacing.small)
+            .padding(.vertical, 5)
+            .background(
+                hovering ? Color.primary.opacity(0.06) : Color.clear,
+                in: RoundedRectangle(cornerRadius: 6)
+            )
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
+        .help("Checked out in \(suggestion.repository) on \(suggestion.branch)")
+    }
 }

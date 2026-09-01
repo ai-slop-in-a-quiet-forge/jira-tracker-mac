@@ -24,6 +24,9 @@ public final class AppEnvironment {
     public let sync: SyncCoordinator
     /// Optional, off by default. See `RemoteCoordinator`.
     let remote: RemoteCoordinator
+    /// Issues named by the branch checked out in a watched repository. Empty unless the user has
+    /// added directories in Settings.
+    let branchSuggestions = BranchSuggestions()
     /// Set by `AppDelegate`, which owns the manager and builds its handlers. Held here so
     /// Settings can re-register a changed shortcut without a relaunch.
     weak var hotkeys: HotkeyManager?
@@ -464,6 +467,18 @@ public final class AppEnvironment {
 
     public func mutateSettings(_ transform: (inout Settings) -> Void) {
         engine.mutateSettings(transform)
+    }
+
+    /// Re-reads the watched repositories' branches.
+    ///
+    /// Driven by the panel opening rather than a timer: a branch only changes when someone
+    /// switches it, which never happens while they are looking at this panel, and a subprocess
+    /// per repository on a schedule is a poor trade for a suggestion.
+    func refreshBranchSuggestions() {
+        // Called even with an empty list, so removing the last folder clears what is on screen
+        // rather than leaving a stale suggestion behind.
+        let paths = engine.settings.watchedRepositoryPaths
+        Task { await branchSuggestions.refresh(paths: paths) }
     }
 
     /// Changes a shortcut and re-registers straight away.

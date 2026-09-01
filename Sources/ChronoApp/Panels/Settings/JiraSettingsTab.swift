@@ -88,8 +88,117 @@ struct JiraSettingsTab: View {
                 )
             }
 
+            WatchedRepositoryEditor()
+
             SavedFilterEditor()
         }
+    }
+}
+
+/// Manages the repositories whose branch names Chrono reads.
+struct WatchedRepositoryEditor: View {
+    @Environment(AppEnvironment.self) private var environment
+    @State private var message: String?
+
+    private var paths: [String] { environment.engine.settings.watchedRepositoryPaths }
+
+    var body: some View {
+        SettingsGroup(
+            "Suggest from your git branch",
+            footnote: "A branch called CYM-1234-fix-parser offers CYM-1234 at the top of the panel. Chrono reads the checked-out branch of these folders when the panel opens, and nothing else — no file watching, and it never writes to your repositories."
+        ) {
+            if paths.isEmpty {
+                Text("No folders added. Nothing is read until you add one.")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(paths, id: \.self) { path in
+                    HStack(spacing: Theme.Spacing.small) {
+                        Image(systemName: "folder")
+                            .font(.system(size: 10.5))
+                            .foregroundStyle(.secondary)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(URL(fileURLWithPath: path).lastPathComponent)
+                                .font(.system(size: 11.5, weight: .medium))
+                            Text(abbreviated(path))
+                                .font(.system(size: 10))
+                                .foregroundStyle(.tertiary)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                        }
+                        Spacer()
+                        if environment.branchSuggestions.unreadablePaths.contains(path) {
+                            Text("Not readable")
+                                .font(.system(size: 10))
+                                .foregroundStyle(.orange)
+                                .help("Chrono could not run git here. The folder may have been moved, renamed, or be on a volume that is not mounted.")
+                        }
+                        Button {
+                            remove(path)
+                        } label: {
+                            Image(systemName: "minus.circle").font(.system(size: 10.5))
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(.red.opacity(0.8))
+                        .help("Stop reading this folder")
+                    }
+                }
+            }
+
+            Divider()
+            HStack {
+                Button("Add a folder…") { add() }
+                    .buttonStyle(FilledButtonStyle(compact: true))
+                if let message {
+                    Text(message)
+                        .font(.system(size: 10.5))
+                        .foregroundStyle(.orange)
+                }
+            }
+        }
+    }
+
+    /// `~/code/thing` reads better than the full path and fits the row.
+    private func abbreviated(_ path: String) -> String {
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
+        return path.hasPrefix(home) ? "~" + path.dropFirst(home.count) : path
+    }
+
+    private func add() {
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.allowsMultipleSelection = false
+        panel.prompt = "Watch"
+        panel.message = "Choose a git repository"
+
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        let path = url.path
+
+        guard !paths.contains(path) else {
+            message = "That folder is already in the list."
+            return
+        }
+
+        // Validated on the way in, so a mistake is caught while the folder chooser is still fresh
+        // in mind rather than showing up later as a suggestion that never appears.
+        Task {
+            guard await BranchSuggestions.isRepository(path) else {
+                message = "That folder is not a git repository."
+                return
+            }
+            message = nil
+            environment.mutateSettings { $0.watchedRepositoryPaths.append(path) }
+            environment.refreshBranchSuggestions()
+        }
+    }
+
+    private func remove(_ path: String) {
+        message = nil
+        environment.mutateSettings { settings in
+            settings.watchedRepositoryPaths.removeAll { $0 == path }
+        }
+        environment.refreshBranchSuggestions()
     }
 }
 
