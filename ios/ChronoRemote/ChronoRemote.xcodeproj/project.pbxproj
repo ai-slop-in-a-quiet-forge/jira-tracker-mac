@@ -61,6 +61,7 @@
 		DDD79B6E2B558155B9FB70EC /* QRScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRScannerView.swift; sourceTree = "<group>"; };
 		8C1E39F9CF060B2F87F9E2A7 /* ChronoActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChronoActivityAttributes.swift; sourceTree = "<group>"; };
 		09952ED5428642EBEAC20F04 /* LiveActivityController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityController.swift; sourceTree = "<group>"; };
+		5BB663C2FB5BBFC6ACE4C5F3 /* Local.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Local.xcconfig; sourceTree = "<group>"; };
 		5A660BA08DAB8784684FAD0C /* Clock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = Clock.swift; path = "../../Sources/ChronoCore/Util/Clock.swift"; sourceTree = SOURCE_ROOT; };
 		FC299ED62F7228C1EDCC2225 /* RemoteProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RemoteProtocol.swift; path = "../../Sources/ChronoCore/Remote/RemoteProtocol.swift"; sourceTree = SOURCE_ROOT; };
 		ADC9C94C8DDC39F9C28E092E /* RemoteAuth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RemoteAuth.swift; path = "../../Sources/ChronoCore/Remote/RemoteAuth.swift"; sourceTree = SOURCE_ROOT; };
@@ -95,6 +96,7 @@
 			children = (
 				3F0DEFF5F9073BC38CB3D2AA /* ChronoRemote */,
 				421611EA4504623A75FBD01B /* ChronoRemoteWidget */,
+				5BB663C2FB5BBFC6ACE4C5F3 /* Local.xcconfig */,
 				433D647A17039DC680DEAE8F /* Products */,
 			);
 			sourceTree = "<group>";
@@ -313,6 +315,7 @@
 		};
 		FEE7AE1A1C8291DDE6965C1D /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 5BB663C2FB5BBFC6ACE4C5F3 /* Local.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = "";
@@ -344,6 +347,7 @@
 		};
 		71B50D198E64EEE00C2C0E9C /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 5BB663C2FB5BBFC6ACE4C5F3 /* Local.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = "";
@@ -372,6 +376,7 @@
 		};
 		2430F68469C622D94267FAB7 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 5BB663C2FB5BBFC6ACE4C5F3 /* Local.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -396,6 +401,7 @@
 		};
 		AFA69CCF024154413069847E /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 5BB663C2FB5BBFC6ACE4C5F3 /* Local.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;

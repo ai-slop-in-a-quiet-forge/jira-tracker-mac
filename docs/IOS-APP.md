@@ -35,8 +35,9 @@ open ios/ChronoRemote/ChronoRemote.xcodeproj
 ```
 
 1. Select the **ChronoRemote** scheme and your iPhone as the destination.
-2. In *Signing & Capabilities*, set **Team** to your Apple ID. Xcode will pick a bundle
-   identifier automatically if `in.chrono.remote` is taken.
+2. Set your signing team in `ios/ChronoRemote/Local.xcconfig` (see below) rather than in
+   *Signing & Capabilities*. Xcode will pick a bundle identifier automatically if
+   `in.chrono.remote` is taken.
 3. Press **Run**.
 4. On the iPhone: Settings ▸ General ▸ VPN & Device Management ▸ trust your developer certificate.
 
@@ -46,14 +47,25 @@ launch on its own — running it fails with `Failed to get descriptors for exten
 `.appex` is embedded in the app and the system loads it when `Activity.request` is called; to
 debug it, run the app and use *Debug ▸ Attach to Process*.
 
-The project is generated (`Scripts/generate-ios-project.py`), so a **Team** set in Xcode is
-overwritten the next time anyone regenerates it. To make it stick, set it once per machine
-instead — the team id stays out of the repository:
+### Signing
+
+The project file is generated *and* committed, so a **Team** set through Xcode's UI is written
+into it — where it becomes a permanent local modification everyone has to work around, and is
+wiped the next time anyone regenerates. The team therefore lives in `Local.xcconfig`, which is
+gitignored and referenced as the targets' base configuration:
 
 ```bash
-export CHRONO_DEVELOPMENT_TEAM=XXXXXXXXXX   # Xcode ▸ Settings ▸ Accounts shows yours
-python3 Scripts/generate-ios-project.py
+# Xcode ▸ Settings ▸ Accounts shows your team id
+echo 'DEVELOPMENT_TEAM = XXXXXXXXXX' > ios/ChronoRemote/Local.xcconfig
 ```
+
+`Scripts/generate-ios-project.py` creates the file if it is missing and never overwrites it — it
+is the one file here you are expected to edit. Setting `CHRONO_DEVELOPMENT_TEAM` before the first
+run seeds it for you.
+
+Only device builds and archives need a team; the simulator does not. Because the value is not in
+the project file, `git status` stays clean and the tracked project is byte-identical for every
+contributor.
 
 First build needs iOS platform support installed in Xcode (Settings ▸ Components). Without it
 the Swift compiles fine but the app-icon step fails.
