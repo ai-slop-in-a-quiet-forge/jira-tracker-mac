@@ -72,6 +72,9 @@ final class StatusItemController {
                         _ = self.environment.engine.now
                         _ = self.environment.engine.settings.menuBarShowsLabel
                         _ = self.environment.engine.settings.showSecondsInMenuBar
+                        // Without this the picker only takes effect on the next tick, which
+                        // never comes while paused or idle.
+                        _ = self.environment.engine.settings.menuBarTime
                     } onChange: {
                         continuation.yield()
                         continuation.finish()
