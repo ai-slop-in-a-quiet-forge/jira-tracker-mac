@@ -89,6 +89,8 @@ struct InterruptionSettingsTab: View {
                 MeetingAppList()
             }
 
+            CalendarSettingsSection()
+
             SettingsGroup("Reminders") {
                 Toggle("Check in periodically while tracking", isOn: bind.bind(\.nudgeEnabled))
                     .font(.system(size: 11.5))

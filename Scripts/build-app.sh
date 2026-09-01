@@ -122,6 +122,13 @@ cat > "$CONTENTS/Info.plist" <<PLIST
     <key>NSBluetoothAlwaysUsageDescription</key>
     <string>Chrono uses Bluetooth to let your iPhone pause and stop the timer when you step away from your Mac.</string>
 
+    <!-- The only sensor that needs a permission, and only when switched on in Settings.
+         Both spellings are needed: macOS 14+ reads the FullAccess key, older ones the plain one. -->
+    <key>NSCalendarsUsageDescription</key>
+    <string>Chrono reads your calendar so it can label meeting time with the meeting, and offer to fill in meetings you forgot to track. It reads only the title and times, never writes, and nothing leaves your Mac.</string>
+    <key>NSCalendarsFullAccessUsageDescription</key>
+    <string>Chrono reads your calendar so it can label meeting time with the meeting, and offer to fill in meetings you forgot to track. It reads only the title and times, never writes, and nothing leaves your Mac.</string>
+
     <!-- Only requested when the user enables the phone web remote. -->
     <key>NSLocalNetworkUsageDescription</key>
     <string>Chrono serves a small control page to your phone on your local network so you can pause the timer from another room.</string>

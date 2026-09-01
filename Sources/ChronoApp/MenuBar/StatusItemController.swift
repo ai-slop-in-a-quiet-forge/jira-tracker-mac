@@ -197,6 +197,7 @@ final class StatusItemController {
         guard let button = statusItem.button else { return }
         environment.engine.tick()
         environment.refreshBranchSuggestions()
+        environment.refreshCalendar()
         popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
         // A transient popover needs the app frontmost for keyboard focus to land in the
         // search field.
