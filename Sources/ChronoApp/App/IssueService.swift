@@ -32,20 +32,11 @@ public final class IssueService {
 
     /// Whether the text is shaped like a Jira issue key (`ABC-123`, `CYM_2-4517`).
     ///
-    /// Hand-parsed rather than done with a regex: it is faster on a per-keystroke path, and
-    /// the rules are clearer written out than encoded in a pattern.
+    /// Kept as a passthrough rather than removed: the call sites read better with the noun in
+    /// them, and the rule itself now lives in ChronoCore because branch-name parsing needs it
+    /// too — two copies of "what is a key" would eventually disagree.
     public static func looksLikeIssueKey(_ text: String) -> Bool {
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        // Split on the *last* dash, so a project key containing one still parses.
-        guard let dash = trimmed.lastIndex(of: "-") else { return false }
-
-        let project = trimmed[trimmed.startIndex..<dash]
-        let number = trimmed[trimmed.index(after: dash)...]
-
-        guard let first = project.first, first.isLetter else { return false }
-        guard project.allSatisfy({ $0.isLetter || $0.isNumber || $0 == "_" }) else { return false }
-        guard !number.isEmpty, number.allSatisfy(\.isNumber) else { return false }
-        return true
+        IssueKey.looksLike(text)
     }
 
     // MARK: - Querying
