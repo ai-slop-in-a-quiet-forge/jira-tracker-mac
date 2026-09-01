@@ -112,6 +112,9 @@ public struct Settings: Codable, Sendable, Equatable {
     public var launchAtLogin: Bool = true
     public var showSecondsInMenuBar: Bool = false
     public var menuBarShowsLabel: Bool = true
+    /// Which clock the menu bar shows. Defaults to the current session, which is what it has
+    /// always shown.
+    public var menuBarTime: MenuBarTime = .session
     /// Cap on menu bar label length, so a long issue summary cannot eat the whole bar.
     public var menuBarLabelMaxLength: Int = 18
     public var playSoundOnStateChange: Bool = false

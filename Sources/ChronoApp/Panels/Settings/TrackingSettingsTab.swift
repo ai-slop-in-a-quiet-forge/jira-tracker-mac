@@ -30,6 +30,17 @@ struct TrackingSettingsTab: View {
                 "Menu bar",
                 footnote: "Seconds are off by default: a title that changes width every second makes everything else in the menu bar shuffle sideways."
             ) {
+                Picker("Show", selection: bind.bind(\.menuBarTime)) {
+                    ForEach(MenuBarTime.allCases, id: \.self) { mode in
+                        Text(mode.title).tag(mode)
+                    }
+                }
+                .font(.system(size: 11.5))
+                Text(environment.engine.settings.menuBarTime.explanation)
+                    .font(.system(size: 10.5))
+                    .foregroundStyle(.secondary)
+
+                Divider()
                 Toggle("Show what I'm tracking, not just the time", isOn: bind.bind(\.menuBarShowsLabel))
                     .font(.system(size: 11.5))
                 Toggle("Show seconds", isOn: bind.bind(\.showSecondsInMenuBar))
