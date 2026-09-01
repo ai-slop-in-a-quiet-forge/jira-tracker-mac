@@ -11,15 +11,25 @@ import ChronoCore
 @MainActor
 final class HotkeyManager {
 
-    enum Action: UInt32, CaseIterable {
-        case togglePanel = 1
-        case startStop = 2
-        case pauseResume = 3
-        case quickInterruption = 4
-    }
+    /// `HotkeyAction` lives in ChronoCore so the settings UI and `HotkeySet` can share it; the
+    /// Carbon API needs a small integer id, which is the only thing added here.
+    typealias Action = HotkeyAction
 
-    private var registrations: [UInt32: EventHotKeyRef] = [:]
-    private var handlers: [UInt32: () -> Void] = [:]
+    /// Shortcuts the window server refused, almost always because another app already owns the
+    /// combination. Surfaced in Settings rather than only logged: a shortcut that silently does
+    /// nothing is indistinguishable from a broken app.
+    private(set) var unavailable: Set<Action> = []
+
+    /// Fired after every registration pass with whatever the window server refused, so the
+    /// environment can mirror it somewhere observable. Not `@Observable` here: this type has a
+    /// `deinit` that unregisters, and the macro's isolation rules do not permit that.
+    var onUnavailableChange: ((Set<Action>) -> Void)?
+
+    private var registrations: [Action: EventHotKeyRef] = [:]
+    private var handlers: [Action: () -> Void] = [:]
+    /// Kept so the set can be re-registered when settings change, without rebuilding the
+    /// closures that only `AppDelegate` knows how to make.
+    private var installedHandlers: [Action: () -> Void] = [:]
     private var eventHandler: EventHandlerRef?
 
     /// The Carbon callback is a C function pointer and cannot capture context, so the live
@@ -54,7 +64,8 @@ final class HotkeyManager {
 
                 // Hot key events are delivered on the main thread by the window server.
                 MainActor.assumeIsolated {
-                    HotkeyManager.current?.handlers[hotKeyID.id]?()
+                    guard let action = HotkeyManager.Action(carbonID: hotKeyID.id) else { return }
+                    HotkeyManager.current?.handlers[action]?()
                 }
                 return noErr
             },
@@ -67,24 +78,30 @@ final class HotkeyManager {
 
     /// Applies a whole set at once, replacing anything previously registered.
     func apply(_ set: HotkeySet, handlers: [Action: () -> Void]) {
+        installedHandlers = handlers
+        reapply(set)
+    }
+
+    /// Re-registers everything for a changed set, reusing the handlers given to `apply`.
+    ///
+    /// Registration is all-or-nothing per shortcut and cheap, so replacing the lot is simpler
+    /// than diffing — and it means a combination freed by one row is immediately available to
+    /// another without an intermediate state where both are registered.
+    func reapply(_ set: HotkeySet) {
         unregisterAll()
 
-        let pairs: [(Action, Hotkey?)] = [
-            (.togglePanel, set.togglePanel),
-            (.startStop, set.startStop),
-            (.pauseResume, set.pauseResume),
-            (.quickInterruption, set.quickInterruption),
-        ]
-
-        for (action, hotkey) in pairs {
-            guard let hotkey, hotkey.enabled, let handler = handlers[action] else { continue }
+        for action in Action.allCases {
+            guard let hotkey = set[action], hotkey.enabled,
+                  let handler = installedHandlers[action]
+            else { continue }
             register(action: action, hotkey: hotkey, handler: handler)
         }
+        onUnavailableChange?(unavailable)
     }
 
     private func register(action: Action, hotkey: Hotkey, handler: @escaping () -> Void) {
         var reference: EventHotKeyRef?
-        let identifier = EventHotKeyID(signature: OSType(0x4348_524F), id: action.rawValue) // 'CHRO'
+        let identifier = EventHotKeyID(signature: OSType(0x4348_524F), id: action.carbonID) // 'CHRO'
 
         let status = RegisterEventHotKey(
             hotkey.keyCode,
@@ -97,12 +114,14 @@ final class HotkeyManager {
 
         guard status == noErr, let reference else {
             // The most likely cause is another app already owning the combination. Not fatal,
-            // and not worth interrupting the user over.
-            ChronoLog.app.info("Could not register hotkey for \(String(describing: action), privacy: .public)")
+            // so the app carries on — but Settings shows it, because a shortcut that does
+            // nothing looks like a bug rather than a collision.
+            ChronoLog.app.info("Could not register hotkey for \(action.rawValue, privacy: .public)")
+            unavailable.insert(action)
             return
         }
-        registrations[action.rawValue] = reference
-        handlers[action.rawValue] = handler
+        registrations[action] = reference
+        handlers[action] = handler
     }
 
     func unregisterAll() {
@@ -111,6 +130,7 @@ final class HotkeyManager {
         }
         registrations.removeAll()
         handlers.removeAll()
+        unavailable.removeAll()
     }
 
     deinit {
@@ -120,5 +140,27 @@ final class HotkeyManager {
         if let eventHandler {
             RemoveEventHandler(eventHandler)
         }
+    }
+}
+
+/// The Carbon hot key API identifies a registration by a small integer, so each action needs a
+/// stable numeric id. Kept next to the manager rather than on the shared `HotkeyAction`, because
+/// it is an artefact of this one API and means nothing to the settings model.
+extension HotkeyAction {
+
+    var carbonID: UInt32 {
+        switch self {
+        case .togglePanel: return 1
+        case .startStop: return 2
+        case .pauseResume: return 3
+        case .quickInterruption: return 4
+        }
+    }
+
+    init?(carbonID: UInt32) {
+        guard let match = HotkeyAction.allCases.first(where: { $0.carbonID == carbonID }) else {
+            return nil
+        }
+        self = match
     }
 }

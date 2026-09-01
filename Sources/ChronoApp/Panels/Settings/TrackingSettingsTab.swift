@@ -78,25 +78,43 @@ struct TrackingSettingsTab: View {
 
             SettingsGroup(
                 "Keyboard shortcuts",
-                footnote: "Control-Option shortcuts, chosen to avoid clashing with app shortcuts."
+                footnote: "Click a shortcut and press the keys you want. Escape cancels, Delete clears it. Every shortcut needs ⌘, ⌃ or ⌥ so it cannot swallow ordinary typing."
             ) {
-                shortcutRow("Show or hide the panel", "⌃⌥T")
-                shortcutRow("Start or stop the timer", "⌃⌥S")
-                shortcutRow("Pause or resume", "⌃⌥P")
-                shortcutRow("Capture an interruption", "⌃⌥I")
+                ForEach(Array(HotkeyAction.allCases.enumerated()), id: \.element) { index, action in
+                    if index > 0 { Divider() }
+                    shortcutRow(action)
+                }
             }
         }
     }
 
-    private func shortcutRow(_ label: String, _ keys: String) -> some View {
-        HStack {
-            Text(label).font(.system(size: 11.5))
-            Spacer()
-            Text(keys)
-                .font(.system(size: 11, weight: .medium, design: .rounded))
-                .padding(.horizontal, 6)
-                .padding(.vertical, 2)
-                .background(.quaternary, in: RoundedRectangle(cornerRadius: 5))
+    private func shortcutRow(_ action: HotkeyAction) -> some View {
+        let settings = environment.engine.settings
+        return VStack(alignment: .leading, spacing: 3) {
+            HStack {
+                Text(action.title).font(.system(size: 11.5))
+                Spacer()
+                ShortcutRecorder(
+                    hotkey: settings.hotkeys[action],
+                    onChange: { hotkey in
+                        environment.updateHotkeys { $0[action] = hotkey }
+                    },
+                    conflictCheck: { candidate in
+                        environment.engine.settings.hotkeys
+                            .conflict(with: candidate, excluding: action)
+                            .map { "Used by \($0.title.lowercased())" }
+                    }
+                )
+                .frame(width: 108, height: 22)
+            }
+
+            // Registration can fail even for a valid combination, when another application owns
+            // it system-wide. Saying so beats a shortcut that quietly does nothing.
+            if environment.unavailableHotkeys.contains(action) {
+                Text("Another app is using this shortcut")
+                    .font(.system(size: 10.5))
+                    .foregroundStyle(.orange)
+            }
         }
     }
 }

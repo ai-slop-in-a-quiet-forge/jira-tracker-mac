@@ -113,6 +113,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             .pauseResume: { [weak environment] in environment?.togglePauseResume() },
             .quickInterruption: { [weak environment] in environment?.start(adhoc: .interruption) },
         ])
+        manager.onUnavailableChange = { [weak environment] actions in
+            environment?.recordUnavailableHotkeys(actions)
+        }
+        // The first pass ran inside `apply` before the callback existed.
+        environment.recordUnavailableHotkeys(manager.unavailable)
+        environment.hotkeys = manager
         hotkeys = manager
     }
 
